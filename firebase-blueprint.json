@@ -1,0 +1,124 @@
+{
+  "entities": {
+    "Department": {
+      "title": "Phòng ban",
+      "description": "Cơ cấu phòng ban trong công ty",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "is_deleted": { "type": "boolean" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["name"]
+    },
+    "Employee": {
+      "title": "Nhân viên",
+      "description": "Hồ sơ nhân viên và phân quyền hệ thống",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "username": { "type": "string" },
+        "system_role": { "type": "string", "enum": ["ADMIN", "CEO", "LEADER", "STAFF"] },
+        "department_id": { "type": "string" },
+        "is_active": { "type": "boolean" },
+        "photo_url": { "type": "string" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["name", "email", "system_role"]
+    },
+    "Project": {
+      "title": "Dự án",
+      "description": "Thông tin dự án xây dựng và bộ chỉ số tài chính",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "contract_value": { "type": "number" },
+        "advance_rate": { "type": "number" },
+        "advance_amount": { "type": "number" },
+        "start_date": { "type": "string", "format": "date" },
+        "end_date": { "type": "string", "format": "date" },
+        "expected_end_date": { "type": "string", "format": "date" },
+        "delivery_date": { "type": "string", "format": "date" },
+        "contract_file_url": { "type": "string" },
+        "recovery_deadline_ratio": { "type": "number" },
+        "status_evaluation": { "type": "string", "enum": ["SAFE", "WARNING", "RISK"] },
+        "evaluation_note": { "type": "string" },
+        "payment_plan": { "type": "array" },
+        "evaluator_id": { "type": "string" },
+        "evaluation_updated_at": { "type": "string", "format": "date-time" },
+        "is_deleted": { "type": "boolean" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["name", "contract_value"]
+    },
+    "ProjectRole": {
+      "title": "Chức danh dự án",
+      "description": "Danh mục các chức danh trong một dự án",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["name", "code"]
+    },
+    "ProjectAssignment": {
+      "title": "Phân bổ nhân sự",
+      "description": "Gán nhân sự vào dự án với chức danh cụ thể",
+      "type": "object",
+      "properties": {
+        "project_id": { "type": "string" },
+        "employee_id": { "type": "string" },
+        "project_role_id": { "type": "string" },
+        "assigned_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "number" }
+      }
+    },
+    "Payment": {
+      "title": "Thanh toán",
+      "description": "Ghi nhận các đợt nghiệm thu và thu hồi tạm ứng",
+      "type": "object",
+      "properties": {
+        "project_id": { "type": "string" },
+        "sequence": { "type": "number" },
+        "completed_value": { "type": "number" },
+        "other_payment": { "type": "number", "description": "Khoản trích chi khác (không cộng vào thực thanh)" },
+        "recovered_amount": { "type": "number" },
+        "paid_amount": { "type": "number" },
+        "cumulative_completed": { "type": "number" },
+        "cumulative_recovered": { "type": "number" },
+        "payment_date": { "type": "string", "format": "date" },
+        "note": { "type": "string" },
+        "updated_at": { "type": "number" }
+      }
+    },
+    "Report": {
+      "title": "Báo cáo công việc",
+      "description": "Nhật ký hiện trường hàng ngày/tuần/tháng",
+      "type": "object",
+      "properties": {
+        "project_id": { "type": "string" },
+        "employee_id": { "type": "string" },
+        "type": { "type": "string", "enum": ["DAILY", "WEEKLY", "MONTHLY"] },
+        "progress_percent": { "type": "number" },
+        "actual_cost": { "type": "number" },
+        "issues": { "type": "string" },
+        "resolutions": { "type": "string" },
+        "tasks_summary": { "type": "string" },
+        "next_tasks": { "type": "string" },
+        "report_date": { "type": "string", "format": "date" },
+        "updated_at": { "type": "number" }
+      }
+    },
+  },
+  "firestore": {
+    "departments": { "schema": "Department", "description": "Collections of departments" },
+    "employees": { "schema": "Employee", "description": "User profiles and roles" },
+    "projects": { "schema": "Project", "description": "Construction projects" },
+    "project_roles": { "schema": "ProjectRole", "description": "Roles within projects" },
+    "project_assignments": { "schema": "ProjectAssignment", "description": "Mapping employees to projects" },
+    "payments": { "schema": "Payment", "description": "Financial records" },
+    "reports": { "schema": "Report", "description": "Field reports" }
+  }
+}

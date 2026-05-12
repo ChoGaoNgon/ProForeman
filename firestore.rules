@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function getEmployee() {
+      return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'dang.nh.aprotrain@gmail.com' ||
+        getEmployee().system_role == 'ADMIN'
+      );
+    }
+
+    function isCEO() {
+      return isSignedIn() && getEmployee().system_role == 'CEO';
+    }
+
+    function isManagement() {
+      return isAdmin() || isCEO();
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Collections ---
+
+    // Departments
+    match /departments/{deptId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Employees
+    match /employees/{empId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == empId; // Allow self-creation during login
+      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == empId && incoming().diff(existing()).affectedKeys().hasOnly(['photo_url', 'name']));
+      allow delete: if isAdmin();
+    }
+
+    // Projects
+    match /projects/{projectId} {
+      function isValidProject(data) {
+        return data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+               data.contract_value is number;
+      }
+      
+      allow read: if isSignedIn();
+      allow create: if isManagement() && isValidProject(incoming());
+      allow update: if isManagement() && isValidProject(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Project Roles
+    match /project_roles/{roleId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Project Assignments
+    match /project_assignments/{assignmentId} {
+      allow read: if isSignedIn();
+      allow write: if isManagement();
+    }
+
+    // Payments
+    match /payments/{paymentId} {
+      function isValidPayment(data) {
+        return data.project_id is string && data.sequence is number && data.completed_value is number;
+      }
+      allow read: if isSignedIn();
+      allow create: if isManagement() && isValidPayment(incoming());
+      allow update: if isManagement() && isValidPayment(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Reports
+    match /reports/{reportId} {
+      function isValidReport(data) {
+        return data.project_id is string && data.employee_id == request.auth.uid &&
+               data.type in ['DAILY', 'WEEKLY', 'MONTHLY'] &&
+               data.progress_percent is number && data.progress_percent >= 0 && data.progress_percent <= 100;
+      }
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidReport(incoming());
+      allow update: if isSignedIn() && existing().employee_id == request.auth.uid && isValidReport(incoming());
+      allow delete: if isAdmin() || (isSignedIn() && existing().employee_id == request.auth.uid);
+    }
+  }
+}
