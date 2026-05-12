@@ -230,6 +230,10 @@ const handleSubmit = async () => {
        <div @click="isFormOpen = false" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
        <div class="relative w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] bg-white rounded-none sm:rounded-[3rem] shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in slide-in-from-bottom duration-500">
           <div class="flex-1 p-8 lg:p-12 space-y-8 overflow-y-auto">
+            <button @click="isFormOpen = false" class="absolute top-6 right-6 p-1.5 hover:bg-neutral-200 rounded-full transition-colors z-10">
+               <X :size="20" class="text-neutral-400" />
+             </button>
+
              <div>
                <h2 class="text-2xl font-black text-neutral-900 uppercase tracking-tight">Lập báo cáo dự án</h2>
                <p class="text-neutral-500 mt-2 font-bold text-sm">CẬP NHẬT TIẾN ĐỘ & HIỆN TRẠNG CÔNG TRƯỜNG</p>
@@ -266,14 +270,9 @@ const handleSubmit = async () => {
                  <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 font-bold text-red-500">Khó khăn / Tồn tại</label>
                  <textarea v-model="form.issues" rows="4" class="w-full p-4 bg-red-50/30 border border-red-100 rounded-2xl outline-none focus:border-red-500 transition-all text-sm font-medium" placeholder="Các vấn đề phát sinh cần hỗ trợ..."></textarea>
               </div>
-          </div>
 
-          <div class="w-full md:w-[380px] bg-neutral-50 p-8 lg:p-12 flex flex-col space-y-6 overflow-y-auto border-t md:border-t-0 md:border-l border-neutral-100 pb-24 md:pb-12">
-             <button @click="isFormOpen = false" class="absolute top-6 right-6 p-1.5 hover:bg-neutral-200 rounded-full transition-colors z-10">
-               <X :size="20" class="text-neutral-400" />
-             </button>
 
-             <div>
+              <div>
                 <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 text-neutral-400">Giải pháp đề xuất</label>
                 <textarea v-model="form.resolutions" rows="5" class="w-full p-4 bg-white border border-neutral-100 rounded-2xl text-sm font-medium outline-none focus:border-blue-500" placeholder="Cách khắc phục vấn đề..."></textarea>
              </div>
@@ -282,7 +281,6 @@ const handleSubmit = async () => {
                 <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Kế hoạch kỳ tới</label>
                 <textarea v-model="form.next_tasks" rows="5" class="w-full p-4 bg-white border border-neutral-100 rounded-2xl text-sm font-medium outline-none focus:border-blue-500" placeholder="Các công việc dự kiến..."></textarea>
              </div>
-
              <div class="fixed bottom-0 left-0 right-0 p-4 md:relative md:p-0 bg-neutral-50/80 backdrop-blur-md md:bg-transparent border-t md:border-0 border-neutral-100 md:mt-auto">
                 <button 
                   @click="handleSubmit" 

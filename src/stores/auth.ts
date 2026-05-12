@@ -59,10 +59,10 @@ export const useAuthStore = defineStore('auth', {
               this.user = newUser;
             }
             
-            // If user changed, clear memory
-            if (oldUser && oldUser.id !== this.user.id) {
+            // If user logged in or changed, refresh data
+            if (!oldUser || oldUser.id !== this.user.id) {
               const appStore = useAppStore();
-              await appStore.clearMemory();
+              if (oldUser) await appStore.clearMemory();
               await appStore.refreshAll();
             }
           } else {
@@ -77,7 +77,41 @@ export const useAuthStore = defineStore('auth', {
     async login() {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      return result.user;
+      const firebaseUser = result.user;
+
+      if (firebaseUser) {
+        this.loading = true;
+        const userDoc = await getDoc(doc(db, 'employees', firebaseUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data() as UserProfile;
+          if (userData.is_active) {
+            this.user = { id: userDoc.id, ...userData } as UserProfile;
+          } else {
+            await signOut(auth);
+            this.user = null;
+            throw new Error('Tài khoản của bạn đã bị khóa.');
+          }
+        } else {
+          const newUser: UserProfile = {
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || 'User',
+            email: firebaseUser.email || '',
+            system_role: (firebaseUser.email === 'dang.nh.aprotrain@gmail.com') ? 'ADMIN' : 'STAFF',
+            is_active: true,
+            photo_url: firebaseUser.photoURL || ''
+          };
+          await setDoc(doc(db, 'employees', firebaseUser.uid), newUser);
+          this.user = newUser;
+        }
+        this.loading = false;
+        this.initialized = true;
+        
+        // Refresh app data after login
+        const appStore = useAppStore();
+        await appStore.refreshAll();
+      }
+      
+      return firebaseUser;
     },
     async logout() {
       await signOut(auth);
