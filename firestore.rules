@@ -34,8 +34,25 @@ service cloud.firestore {
       return isSignedIn() && getEmployee().system_role == 'CEO';
     }
 
-    function isManagement() {
-      return isAdmin() || isCEO();
+    function canManageProject(projectId) {
+      let assignmentPath = /databases/$(database)/documents/project_assignments/$(request.auth.uid + "_" + projectId);
+      let assignment = get(assignmentPath);
+      let roleId = assignment.data.get('project_role_id', '');
+      let roleData = get(/databases/$(database)/documents/project_roles/$(roleId)).data;
+      let name = roleData.get('name', '').lower();
+      let code = roleData.get('code', '').lower();
+      
+      return name.matches('.*(chỉ huy trưởng|bch|kế toán).*') || 
+             code.matches('.*(cht|kt).*');
+    }
+
+    function isManagement(projectId) {
+      return isAdmin() || isCEO() || (
+        isSignedIn() && 
+        projectId != null && 
+        exists(/databases/$(database)/documents/project_assignments/$(request.auth.uid + "_" + projectId)) && 
+        canManageProject(projectId)
+      );
     }
 
     function incoming() {
@@ -70,8 +87,8 @@ service cloud.firestore {
       }
       
       allow read: if isSignedIn();
-      allow create: if isManagement() && isValidProject(incoming());
-      allow update: if isManagement() && isValidProject(incoming());
+      allow create: if (isAdmin() || isCEO()) && isValidProject(incoming());
+      allow update: if isManagement(projectId) && isValidProject(incoming());
       allow delete: if isAdmin();
     }
 
@@ -84,7 +101,7 @@ service cloud.firestore {
     // Project Assignments
     match /project_assignments/{assignmentId} {
       allow read: if isSignedIn();
-      allow write: if isManagement();
+      allow write: if isAdmin() || isCEO();
     }
 
     // Payments
@@ -93,8 +110,8 @@ service cloud.firestore {
         return data.project_id is string && data.sequence is number && data.completed_value is number;
       }
       allow read: if isSignedIn();
-      allow create: if isManagement() && isValidPayment(incoming());
-      allow update: if isManagement() && isValidPayment(incoming());
+      allow create: if isManagement(incoming().project_id) && isValidPayment(incoming());
+      allow update: if isManagement(existing().project_id) && isValidPayment(incoming());
       allow delete: if isAdmin();
     }
 

@@ -22,11 +22,33 @@ const reports = ref<any[]>([]);
 const loading = ref(true);
 const filterProjectId = ref('');
 const isFormOpen = ref(false);
+const lastDoc = ref<any>(null);
+const hasMore = ref(true);
 
-const fetchReports = async () => {
+const fetchReports = async (isLoadMore = false) => {
+  if (loading.value && isLoadMore) return;
+  
+  if (!isLoadMore) {
+    reports.value = [];
+    lastDoc.value = null;
+    hasMore.value = true;
+  }
+  
   loading.value = true;
   try {
-    reports.value = [...appStore.visibleReports].slice(0, 50);
+    const result = await appStore.fetchReportsPaginated(3, filterProjectId.value || undefined, lastDoc.value);
+    
+    if (result.reports.length < 3) {
+      hasMore.value = false;
+    }
+    
+    if (isLoadMore) {
+      reports.value = [...reports.value, ...result.reports];
+    } else {
+      reports.value = result.reports;
+    }
+    
+    lastDoc.value = result.lastDoc;
   } catch (err) {
     console.error('Error fetching reports:', err);
   } finally {
@@ -34,16 +56,15 @@ const fetchReports = async () => {
   }
 };
 
-onMounted(async () => {
-  await Promise.all([
-    appStore.refreshAll(),
-    fetchReports()
-  ]);
+// Handle project filter changes
+import { watch } from 'vue';
+watch(filterProjectId, () => {
+  fetchReports();
 });
 
-const filteredReports = computed(() => {
-  if (!filterProjectId.value) return reports.value;
-  return reports.value.filter(r => r.project_id === filterProjectId.value);
+onMounted(async () => {
+  await appStore.refreshAll(); // Still need to load projects/assignments
+  await fetchReports();
 });
 
 const getProjectName = (id: string) => {
@@ -84,7 +105,7 @@ const handleSubmit = async () => {
       next_tasks: ''
     });
     isFormOpen.value = false;
-    await fetchReports();
+    await fetchReports(); // Reload to see the new report
   } catch (err) {
     console.error('Error saving report:', err);
   } finally {
@@ -118,12 +139,12 @@ const handleSubmit = async () => {
 
     <!-- Report List -->
     <div class="space-y-4">
-       <div v-if="filteredReports.length === 0" class="py-16 text-center bg-white rounded-3xl border border-dashed border-neutral-200">
+       <div v-if="reports.length === 0 && !loading" class="py-16 text-center bg-white rounded-3xl border border-dashed border-neutral-200">
          <ClipboardList :size="48" class="text-neutral-200 mx-auto mb-4" />
          <p class="text-neutral-400 font-bold">Chưa có báo cáo nào được ghi nhận</p>
        </div>
        
-       <div v-for="report in filteredReports" :key="report.id" class="bg-white rounded-[2rem] border border-neutral-100 shadow-sm overflow-hidden flex flex-col md:flex-row hover:border-blue-200 transition-colors">
+       <div v-for="report in reports" :key="report.id" class="bg-white rounded-[2rem] border border-neutral-100 shadow-sm overflow-hidden flex flex-col md:flex-row hover:border-blue-200 transition-colors">
           <div class="md:w-28 bg-neutral-50 p-4 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-neutral-100">
              <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-blue-600 shadow-sm mb-2">
                 <Calendar :size="16" />
@@ -191,6 +212,17 @@ const handleSubmit = async () => {
              </div>
           </div>
        </div>
+    </div>
+
+    <!-- Load More Button -->
+    <div v-if="hasMore" class="flex justify-center pt-4">
+       <button 
+         @click="fetchReports(true)" 
+         :disabled="loading"
+         class="px-8 py-3 bg-white border border-neutral-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-neutral-500 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+       >
+         {{ loading ? 'Đang tải...' : 'Hiển thị thêm' }}
+       </button>
     </div>
 
     <!-- Create Modal -->

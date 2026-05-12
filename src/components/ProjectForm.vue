@@ -70,7 +70,7 @@ const handleSubmit = async () => {
       ...form,
       advance_amount: form.advance_amount || calculatedAdvance.value,
       status: props.project?.status || 'ACTIVE',
-      risk_status: props.project?.risk_status || 'SAFE',
+      status_evaluation: props.project?.status_evaluation || props.project?.risk_status || 'SAFE',
       is_deleted: 0,
       id: props.project?.id
     });

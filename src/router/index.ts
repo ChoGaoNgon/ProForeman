@@ -40,8 +40,8 @@ router.beforeEach(async (to, from, next) => {
     next({ name: 'login' });
   } else if (authStore.user && to.name === 'login') {
     next({ name: 'dashboard' });
-  } else if (authStore.user && to.name === 'dashboard' && !authStore.isAdmin && !appStore.hasAnyPaymentAccess) {
-    // Basic users go to Reports instead of Dashboard by default
+  } else if (authStore.user && to.name === 'dashboard' && !appStore.hasAnyPaymentAccess) {
+    // Basic users go to Reports instead of Dashboard
     next({ name: 'reports' });
   } else if (to.meta.adminOnly && !authStore.isAdmin) {
     next({ name: 'dashboard' });

@@ -50,10 +50,13 @@ const fetchProjectData = async () => {
       return;
     }
     
-    // Fetch related data from memory in store
-    reports.value = appStore.reports.filter(r => r.project_id === id);
+    // Fetch related data
     assignments.value = appStore.project_assignments.filter(a => a.project_id === id);
     payments.value = appStore.payments.filter(p => p.project_id === id);
+    
+    // Fetch reports for this project specifically
+    const result = await appStore.fetchReportsPaginated(10, id);
+    reports.value = result.reports;
   } catch (err) {
     console.error('Error fetching project detail:', err);
   } finally {
@@ -150,9 +153,10 @@ const updateRiskStatus = async (newRisk: string) => {
   try {
     await appStore.saveEntity('projects', 'UPDATE', {
       ...project.value,
-      risk_status: newRisk
+      status_evaluation: newRisk
     });
-    project.value.risk_status = newRisk;
+    project.value.status_evaluation = newRisk;
+    project.value.risk_status = newRisk; // Keep for compatibility if needed
   } catch (err) {
     console.error('Error updating risk status:', err);
   } finally {
@@ -196,7 +200,9 @@ const handleAssign = async () => {
 
   isAssigning.value = true;
   try {
+    const assignmentId = `${assignForm.employee_id}_${project.value.id}`;
     await appStore.saveEntity('project_assignments', 'CREATE', {
+      id: assignmentId,
       project_id: project.value.id,
       ...assignForm
     });
@@ -373,17 +379,17 @@ const handleDeleteProject = async () => {
                 <button 
                   @click="updateRiskStatus('SAFE')"
                   :disabled="actionLoading"
-                  :class="['px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all', project.risk_status === 'SAFE' ? 'bg-emerald-600 text-white' : 'text-white/40 hover:text-white']"
+                  :class="['px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all', (project.status_evaluation === 'SAFE' || project.risk_status === 'SAFE') ? 'bg-emerald-600 text-white' : 'text-white/40 hover:text-white']"
                 >An toàn</button>
                 <button 
                   @click="updateRiskStatus('WARNING')"
                   :disabled="actionLoading"
-                  :class="['px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all', project.risk_status === 'WARNING' ? 'bg-amber-600 text-white' : 'text-white/40 hover:text-white']"
+                  :class="['px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all', (project.status_evaluation === 'WARNING' || project.risk_status === 'WARNING') ? 'bg-amber-600 text-white' : 'text-white/40 hover:text-white']"
                 >Cảnh báo</button>
                 <button 
                   @click="updateRiskStatus('RISK')"
                   :disabled="actionLoading"
-                  :class="['px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all', project.risk_status === 'RISK' ? 'bg-red-600 text-white' : 'text-white/40 hover:text-white']"
+                  :class="['px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all', (project.status_evaluation === 'RISK' || project.risk_status === 'RISK') ? 'bg-red-600 text-white' : 'text-white/40 hover:text-white']"
                 >Nguy cơ</button>
              </div>
 

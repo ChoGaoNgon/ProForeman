@@ -26,11 +26,14 @@ const route = useRoute();
 const isSidebarOpen = ref(true);
 
 const navItems = computed(() => {
-  const items = [
-    { name: 'dashboard', label: 'Bảng điều khiển', icon: LayoutDashboard },
-    { name: 'projects', label: 'Dự án', icon: Briefcase },
-    { name: 'reports', label: 'Báo cáo', icon: ClipboardList },
-  ];
+  const items: any[] = [];
+  
+  if (appStore.hasAnyPaymentAccess) {
+    items.push({ name: 'dashboard', label: 'Bảng điều khiển', icon: LayoutDashboard });
+  }
+
+  items.push({ name: 'projects', label: 'Dự án', icon: Briefcase });
+  items.push({ name: 'reports', label: 'Báo cáo', icon: ClipboardList });
   
   if (appStore.hasAnyPaymentAccess) {
     items.push({ name: 'payments', label: 'Thanh toán', icon: CreditCard });

@@ -10,6 +10,8 @@ import {
   query, 
   orderBy, 
   where,
+  limit,
+  startAfter,
   Timestamp,
   serverTimestamp
 } from 'firebase/firestore';
@@ -17,7 +19,7 @@ import { db, OperationType, handleFirestoreError } from '@/services/firebase';
 
 import { useAuthStore } from '@/stores/auth';
 
-const ENTITIES = ['departments', 'employees', 'project_roles', 'projects', 'payments', 'reports', 'project_assignments'];
+const ENTITIES = ['departments', 'employees', 'project_roles', 'projects', 'payments', 'project_assignments'];
 
 export const useAppStore = defineStore('app', {
   state: () => ({
@@ -149,6 +151,12 @@ export const useAppStore = defineStore('app', {
         this.project_assignments = this.project_assignments.filter(a => a.is_deleted !== 1);
         this.payments = this.payments.filter(p => p.is_deleted !== 1).sort((a, b) => (b.payment_date || '').localeCompare(a.payment_date || ''));
         this.reports = this.reports.filter(r => r.is_deleted !== 1).sort((a, b) => (b.report_date || '').localeCompare(a.report_date || ''));
+
+        // Auto-migrate assignment IDs if Admin is logged in
+        const authStore = useAuthStore();
+        if (authStore.isAdmin) {
+          this.migrateAssignmentIds();
+        }
       } catch (err) {
         console.error('Error refreshing data from Firestore:', err);
       } finally {
@@ -156,27 +164,60 @@ export const useAppStore = defineStore('app', {
       }
     },
 
+    async migrateAssignmentIds() {
+      // Find assignments that don't follow the {employee_id}_{project_id} format
+      const legacyAssignments = this.project_assignments.filter(a => a.id !== `${a.employee_id}_${a.project_id}`);
+      if (legacyAssignments.length === 0) return;
+
+      console.log(`Migrating ${legacyAssignments.length} legacy assignments...`);
+      for (const a of legacyAssignments) {
+        try {
+          const newId = `${a.employee_id}_${a.project_id}`;
+          // 1. Create new document with correct ID
+          const { id, ...data } = a;
+          await setDoc(doc(db, 'project_assignments', newId), {
+            ...data,
+            id: newId,
+            updated_at: serverTimestamp()
+          });
+          // 2. Delete old document
+          await deleteDoc(doc(db, 'project_assignments', id));
+          console.log(`Migrated assignment ${id} -> ${newId}`);
+        } catch (err) {
+          console.error(`Failed to migrate assignment ${a.id}:`, err);
+        }
+      }
+      // Refresh to update local state after migration
+      const q = query(collection(db, 'project_assignments'));
+      const snap = await getDocs(q);
+      this.project_assignments = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => (a as any).is_deleted !== 1);
+    },
+
     async saveEntity(entity: string, action: 'CREATE' | 'UPDATE' | 'DELETE', data: any) {
-      const path = `${entity}/${data.id}`;
+      this.isLoading = true;
+      const targetId = data.id || (action === 'CREATE' ? doc(collection(db, entity)).id : undefined);
+      const path = `${entity}/${targetId || 'new'}`;
+      
       try {
         const cleanData = JSON.parse(JSON.stringify(toRaw(data)));
+
         if (action === 'DELETE') {
-          // Soft delete if preferred by previous logic, or hard delete
-          // The previous logic used is_deleted: 1 for soft delete in some cases
           await updateDoc(doc(db, entity, data.id), { 
             is_deleted: 1,
             updated_at: serverTimestamp() 
           });
         } else if (action === 'CREATE') {
-          const id = data.id || doc(collection(db, entity)).id;
-          await setDoc(doc(db, entity, id), {
+          if (!targetId) throw new Error('Could not generate document ID');
+          await setDoc(doc(db, entity, targetId), {
+            is_deleted: 0,
             ...cleanData,
-            id,
+            id: targetId,
             created_at: serverTimestamp(),
             updated_at: serverTimestamp()
           });
         } else if (action === 'UPDATE') {
           const { id, ...updateData } = cleanData;
+          if (!id) throw new Error('Document ID is required for update');
           await updateDoc(doc(db, entity, id), {
             ...updateData,
             updated_at: serverTimestamp()
@@ -185,6 +226,8 @@ export const useAppStore = defineStore('app', {
         await this.refreshAll();
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, path);
+      } finally {
+        this.isLoading = false;
       }
     },
 
@@ -204,6 +247,58 @@ export const useAppStore = defineStore('app', {
        const q = query(collection(db, 'reports'), where('is_deleted', '!=', 1), orderBy('report_date', 'desc'));
        const snap = await getDocs(q);
        this.reports = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+
+    async fetchReportsPaginated(limitCount: number = 3, projectId?: string, startAfterDoc?: any) {
+      this.isLoading = true;
+      try {
+        const authStore = useAuthStore();
+        
+        const baseConstraints: any[] = [
+          where('is_deleted', '==', 0),
+          orderBy('report_date', 'desc'),
+          limit(limitCount)
+        ];
+
+        if (projectId) {
+          baseConstraints.unshift(where('project_id', '==', projectId));
+        } else if (!authStore.isAdmin) {
+          const myAssignments = this.project_assignments.filter(a => a.employee_id === authStore.user!.id);
+          const myProjectIds = myAssignments.map(a => a.project_id);
+          if (myProjectIds.length > 0) {
+            baseConstraints.unshift(where('project_id', 'in', myProjectIds.slice(0, 30)));
+          } else {
+            return { reports: [], lastDoc: null };
+          }
+        }
+
+        if (startAfterDoc) {
+          baseConstraints.push(startAfter(startAfterDoc));
+        }
+
+        const q = query(collection(db, 'reports'), ...baseConstraints as any[]);
+        const snap = await getDocs(q);
+        const newReports = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const lastDoc = snap.docs[snap.docs.length - 1] || null;
+
+        // Merge into existing reports in store, avoiding duplicates
+        newReports.forEach(report => {
+          const exists = this.reports.find(r => r.id === report.id);
+          if (!exists) {
+            this.reports.push(report);
+          }
+        });
+
+        // re-sort global reports state
+        this.reports.sort((a, b) => (b.report_date || '').localeCompare(a.report_date || ''));
+
+        return { reports: newReports, lastDoc };
+      } catch (err) {
+        console.error('Error fetching paginated reports:', err);
+        return { reports: [], lastDoc: null };
+      } finally {
+        this.isLoading = false;
+      }
     },
 
     async calculateProjectSummary(projectId: string) {

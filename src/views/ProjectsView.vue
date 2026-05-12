@@ -49,7 +49,8 @@ const formatCurrency = (val: number) => {
 };
 
 const getStatusColor = (status: string) => {
-  switch (status) {
+  const s = status?.toUpperCase();
+  switch (s) {
     case 'RISK': return 'bg-red-500 text-white';
     case 'WARNING': return 'bg-amber-400 text-neutral-900';
     default: return 'bg-emerald-500 text-white';
@@ -131,8 +132,8 @@ const getStatusColor = (status: string) => {
             <div class="flex flex-col items-end gap-2">
               <p class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Giá trị HĐ</p>
               <p class="font-black text-neutral-900 leading-none">{{ formatCurrency(project.contract_value) }}</p>
-              <span :class="['px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest', getStatusColor(project.status_evaluation)]">
-                {{ project.status_evaluation }}
+              <span :class="['px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest', getStatusColor(project.status_evaluation || project.risk_status || 'SAFE')]">
+                {{ project.status_evaluation || project.risk_status || 'SAFE' }}
               </span>
             </div>
           </div>
