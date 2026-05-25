@@ -80,27 +80,11 @@ watch(() => form.project_id, async (newVal) => {
       total_advance: selectedProject.value?.advance_amount || 0
     };
 
-    updateRecovery();
+    form.recovered_amount = 0; // Reset recovered amount for manual typing
   } else {
     projectStats.value = null;
   }
 });
-
-const updateRecovery = () => {
-  if (projectStats.value && selectedProject.value) {
-    const rate = (selectedProject.value.advance_rate || 30) / 100;
-    let recommended = form.completed_value * rate;
-    const curCumCompleted = projectStats.value.cumulative_completed + form.completed_value;
-    const threshold = (selectedProject.value.recovery_deadline_ratio || 80) / 100 * (selectedProject.value.contract_value || 0);
-    
-    if (curCumCompleted >= threshold) {
-      recommended = projectStats.value.total_advance - projectStats.value.cumulative_recovered;
-    }
-    form.recovered_amount = Math.max(0, Math.min(recommended, projectStats.value.total_advance - projectStats.value.cumulative_recovered));
-  }
-};
-
-watch(() => form.completed_value, () => updateRecovery());
 
 const paidAmount = computed(() => {
   return (form.completed_value || 0) - (form.recovered_amount || 0);
@@ -110,16 +94,17 @@ const handleSubmit = async () => {
   if (!form.project_id || (form.completed_value <= 0 && form.other_payment <= 0) || loading.value) return;
   loading.value = true;
   try {
-    const newCumulativeRecovered = (projectStats.value.cumulative_recovered || 0) + form.recovered_amount;
-    const newCumulativeCompleted = (projectStats.value.cumulative_completed || 0) + form.completed_value;
+    const stats = projectStats.value || { cumulative_recovered: 0, cumulative_completed: 0, total_advance: 0, next_sequence: 1 };
+    const newCumulativeRecovered = (stats.cumulative_recovered || 0) + form.recovered_amount;
+    const newCumulativeCompleted = (stats.cumulative_completed || 0) + form.completed_value;
 
     await appStore.saveEntity('payments', 'CREATE', {
       ...form,
-      sequence: projectStats.value.next_sequence,
+      sequence: stats.next_sequence || 1,
       paid_amount: paidAmount.value,
       cumulative_completed: newCumulativeCompleted,
       cumulative_recovered: newCumulativeRecovered,
-      remaining_advance: projectStats.value.total_advance - newCumulativeRecovered
+      remaining_advance: (stats.total_advance || 0) - newCumulativeRecovered
     });
 
     Object.assign(form, {
@@ -205,121 +190,92 @@ const handleSubmit = async () => {
     <div v-if="isFormOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div @click="isFormOpen = false" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
       
-      <div class="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in zoom-in duration-300">
-        <!-- Left Side: Input -->
-        <div class="flex-1 p-10 lg:p-12 space-y-8">
-           <div>
-             <h2 class="text-3xl font-black text-neutral-900 uppercase leading-none">Cửa sổ tính toán</h2>
-             <p class="text-neutral-500 mt-2 font-bold text-sm">NGHIỆM THU & PHÂN BỔ TÀI CHÍNH</p>
-           </div>
+      <div class="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden p-10 lg:p-12 animate-in zoom-in duration-300">
+        <button @click="isFormOpen = false" class="absolute top-8 right-8 p-1.5 hover:bg-neutral-200 rounded-full transition-colors z-10">
+          <X :size="20" class="text-neutral-400" />
+        </button>
 
-           <div class="space-y-6">
-             <div>
-               <div class="flex justify-between mb-2">
-                 <label class="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Dự án cần quyết toán</label>
-                 <!-- <button class="text-[10px] font-bold text-blue-600 flex items-center gap-1 uppercase tracking-widest">
-                   <Calculator :size="12" />
-                   Xuất từ dự tính
-                 </button> -->
-               </div>
-               <select v-model="form.project_id" class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer">
-                 <option value="" disabled>-- Chọn dự án --</option>
-                 <option v-for="p in appStore.visibleProjects.filter(p => appStore.canManageProject(p.id))" :key="p.id" :value="p.id">{{ p.name }}</option>
-               </select>
-             </div>
+        <div class="space-y-8">
+          <div>
+            <h2 class="text-3xl font-black text-neutral-900 uppercase leading-none">LẬP THANH TOÁN MỚI</h2>
+            <p class="text-neutral-500 mt-2 font-bold text-sm text-neutral-400 uppercase tracking-widest">NGHIỆM THU & PHÂN BỔ TÀI CHÍNH THỦ CÔNG</p>
+          </div>
 
-             <div :class="{ 'opacity-40 pointer-events-none': !form.project_id }">
-               <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Giá trị nghiệm thu đợt này (VNĐ)</label>
-               <input 
-                 v-model.number="form.completed_value"
-                 type="number" 
-                 class="w-full h-16 px-6 bg-neutral-50 border border-neutral-100 rounded-2xl font-black text-2xl outline-none focus:border-blue-500 transition-all"
-               />
-             </div>
+          <div class="space-y-6">
+            <!-- Dự án cần quyết toán -->
+            <div>
+              <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Dự án cần quyết toán</label>
+              <select v-model="form.project_id" class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer">
+                <option value="" disabled>-- Chọn dự án --</option>
+                <option v-for="p in appStore.visibleProjects.filter(p => appStore.canManageProject(p.id))" :key="p.id" :value="p.id">{{ p.name }}</option>
+              </select>
+            </div>
 
-             <div class="grid grid-cols-1 gap-4" :class="{ 'opacity-40 pointer-events-none': !form.project_id }">
-               <div>
-                 <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Khoản trích chi khác (VNĐ)</label>
-                 <input v-model.number="form.other_payment" type="number" class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-xl font-bold" />
-               </div>
-             </div>
-
-             <div class="grid grid-cols-2 gap-4" :class="{ 'opacity-40 pointer-events-none': !form.project_id }">
-               <div>
-                 <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Ngày lập hồ sơ</label>
-                 <input v-model="form.payment_date" type="date" class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-xl font-bold" />
-               </div>
-               <div>
-                 <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Thu hồi tạm ứng thực tế (VNĐ)</label>
-                 <input v-model.number="form.recovered_amount" type="number" class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-xl font-bold text-emerald-600" />
-               </div>
-             </div>
-           </div>
-        </div>
-
-        <!-- Right Side: Result -->
-        <div class="w-full md:w-[380px] bg-neutral-50 p-10 lg:p-12 border-l border-neutral-100 flex flex-col pt-20">
-           <button @click="isFormOpen = false" class="absolute top-8 right-8 p-1.5 hover:bg-neutral-200 rounded-full transition-colors">
-             <X :size="20" class="text-neutral-400" />
-           </button>
-
-           <div v-if="projectStats" class="space-y-8 animate-in slide-in-from-right duration-500">
+            <div :class="{ 'opacity-40 pointer-events-none': !form.project_id }" class="space-y-6">
+              <!-- Giá trị nghiệm thu đợt này (VNĐ) -->
               <div>
-                <p class="text-[10px] font-bold text-neutral-400 uppercase tracking-[0.2em] mb-4">Kết quả tính toán (Lần {{ projectStats.next_sequence }})</p>
-                
-                <div class="space-y-6">
-                  <div>
-                    <p class="text-[10px] font-black text-neutral-400 uppercase mb-1">Tạm ứng còn lại (Dư nợ)</p>
-                    <p class="text-3xl font-black text-neutral-900 leading-none">
-                      {{ formatCurrency(projectStats.total_advance - projectStats.cumulative_recovered) }}
-                    </p>
-                  </div>
+                <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Giá trị nghiệm thu đợt này (VNĐ)</label>
+                <input 
+                  v-model.number="form.completed_value"
+                  type="number" 
+                  class="w-full h-16 px-6 bg-neutral-50 border border-neutral-100 rounded-2xl font-black text-2xl outline-none focus:border-blue-500 transition-all"
+                />
+              </div>
 
-                  <div class="pt-6 border-t border-neutral-200">
-                    <div class="flex justify-between items-center mb-1">
-                      <p class="text-[10px] font-black text-neutral-400 uppercase">Thu hồi đề xuất</p>
-                      <span class="text-[9px] font-bold text-neutral-400 tracking-tighter">Định mức: {{ selectedProject?.advance_rate }}% x Nghiệm thu</span>
-                    </div>
-                    <p class="text-2xl font-black text-emerald-600 leading-none">-{{ formatCurrency(form.recovered_amount) }}</p>
-                  </div>
+              <!-- Khoản trích chi khác (VNĐ) -->
+              <div>
+                <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Khoản trích chi khác (VNĐ)</label>
+                <input 
+                  v-model.number="form.other_payment" 
+                  type="number" 
+                  class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all" 
+                />
+              </div>
 
-                  <div class="pt-6 border-t border-neutral-200">
-                    <p class="text-[10px] font-black text-neutral-400 uppercase mb-1">Thực thanh đợt này</p>
-                    <p class="text-4xl font-black text-blue-600 leading-none tracking-tighter">{{ formatCurrency(paidAmount) }}</p>
-                    <p class="text-[10px] font-bold text-neutral-400 mt-2 italic">Giá trị sau khi trừ thu hồi</p>
-                  </div>
+              <!-- Ngày lập hồ sơ & Thu hồi tạm ứng thực tế (VNĐ) -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Ngày lập hồ sơ</label>
+                  <input v-model="form.payment_date" type="date" class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Thu hồi tạm ứng thực tế (VNĐ)</label>
+                  <input 
+                    v-model.number="form.recovered_amount" 
+                    type="number" 
+                    class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-2xl font-bold text-emerald-600 outline-none focus:border-emerald-500 transition-all" 
+                  />
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div class="pt-8 border-t border-neutral-200 space-y-4 flex-1">
-                 <p class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Lũy kế sau thanh toán</p>
-                 <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-neutral-500">Quyết toán tập trung</span>
-                    <span class="text-sm font-black text-neutral-900">{{ formatCurrency(projectStats.cumulative_completed + form.completed_value) }}</span>
-                 </div>
-                 <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-neutral-500">Lũy kế thu hồi</span>
-                    <span class="text-sm font-black text-emerald-600">{{ formatCurrency(projectStats.cumulative_recovered + form.recovered_amount) }}</span>
-                 </div>
-              </div>
+          <!-- Actions & Calculations Summary inside main modal -->
+          <div class="pt-6 border-t border-neutral-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div v-if="form.project_id && (form.completed_value > 0 || form.recovered_amount > 0)" class="text-left">
+              <span class="text-[9px] font-black text-neutral-400 uppercase tracking-wider block">Thực thanh đợt này tự tính</span>
+              <span class="text-xl font-black text-blue-600 leading-none">{{ formatCurrency(paidAmount) }}</span>
+            </div>
+            <div v-else></div>
 
+            <div class="flex items-center gap-3">
+              <button 
+                @click="isFormOpen = false"
+                class="px-5 py-3 border border-neutral-200 text-neutral-500 rounded-xl font-bold text-xs uppercase hover:bg-neutral-50 transition-all"
+              >
+                Hủy bỏ
+              </button>
               <button 
                 @click="handleSubmit" 
-                :disabled="loading"
-                class="w-full h-16 bg-neutral-900 text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:scale-100"
+                :disabled="loading || !form.project_id"
+                class="inline-flex items-center gap-2 px-6 py-3 bg-neutral-900 text-white rounded-xl font-black uppercase text-xs hover:bg-neutral-800 transition-all shadow-lg disabled:opacity-50"
               >
-                <span v-if="loading" class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></span>
-                <ArrowUpRight v-else :size="20" />
+                <span v-if="loading" class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></span>
+                <ArrowUpRight v-else :size="14" />
                 <span>{{ loading ? 'ĐANG XỬ LÝ...' : 'LƯU PHIẾU CHI' }}</span>
               </button>
-           </div>
-           
-           <div v-else class="flex-1 flex flex-col items-center justify-center text-center">
-              <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-neutral-200 border border-neutral-100 mb-4">
-                <Calculator :size="32" />
-              </div>
-              <p class="text-sm font-bold text-neutral-400 max-w-[200px]">Vui lòng chọn dự án để bắt đầu tính toán hồ sơ.</p>
-           </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -374,23 +374,27 @@ const handleDeleteProject = async () => {
                 >Kết thúc</button>
              </div>
 
-             <!-- Risk Evaluation -->
-             <div class="flex items-center p-1 bg-white/5 rounded-xl border border-white/10">
-                <button 
-                  @click="updateRiskStatus('SAFE')"
+             <!-- Risk Evaluation (Combobox) -->
+             <div class="relative flex items-center bg-white/5 border border-white/10 rounded-xl overflow-hidden focus-within:border-white/30 transition-all">
+                <select 
+                  :value="project.status_evaluation || project.risk_status || 'SAFE'"
+                  @change="updateRiskStatus(($event.target as HTMLSelectElement).value)"
                   :disabled="actionLoading"
-                  :class="['px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all', (project.status_evaluation === 'SAFE' || project.risk_status === 'SAFE') ? 'bg-emerald-600 text-white' : 'text-white/40 hover:text-white']"
-                >An toàn</button>
-                <button 
-                  @click="updateRiskStatus('WARNING')"
-                  :disabled="actionLoading"
-                  :class="['px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all', (project.status_evaluation === 'WARNING' || project.risk_status === 'WARNING') ? 'bg-amber-600 text-white' : 'text-white/40 hover:text-white']"
-                >Cảnh báo</button>
-                <button 
-                  @click="updateRiskStatus('RISK')"
-                  :disabled="actionLoading"
-                  :class="['px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all', (project.status_evaluation === 'RISK' || project.risk_status === 'RISK') ? 'bg-red-600 text-white' : 'text-white/40 hover:text-white']"
-                >Nguy cơ</button>
+                  :class="[
+                    'appearance-none pl-4 pr-10 py-1.5 bg-transparent text-[10px] font-black uppercase tracking-widest text-white outline-none cursor-pointer transition-all duration-200 select-none border-none min-w-[120px]',
+                    (project.status_evaluation === 'SAFE' || project.risk_status === 'SAFE') ? 'text-emerald-400' : '',
+                    (project.status_evaluation === 'WARNING' || project.risk_status === 'WARNING') ? 'text-amber-400' : '',
+                    (project.status_evaluation === 'RISK' || project.risk_status === 'RISK') ? 'text-red-400' : ''
+                  ]"
+                >
+                  <option value="SAFE" class="bg-neutral-900 text-emerald-400 font-bold uppercase text-[10px]">An toàn</option>
+                  <option value="WARNING" class="bg-neutral-900 text-amber-400 font-bold uppercase text-[10px]">Cảnh báo</option>
+                  <option value="RISK" class="bg-neutral-900 text-red-400 font-bold uppercase text-[10px]">Nguy cơ</option>
+                </select>
+                <!-- Chevron Down icon overlay -->
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3/5 text-neutral-400 pr-3">
+                  <ChevronDown :size="12" />
+                </div>
              </div>
 
              <!-- Project Actions -->
