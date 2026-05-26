@@ -16,7 +16,8 @@ import {
   Menu,
   X,
   Bell,
-  Activity as ActivityIcon
+  Activity as ActivityIcon,
+  Package
 } from 'lucide-vue-next';
 
 const authStore = useAuthStore();
@@ -34,6 +35,7 @@ const navItems = computed(() => {
 
   items.push({ name: 'projects', label: 'Dự án', icon: Briefcase });
   items.push({ name: 'reports', label: 'Báo cáo', icon: ClipboardList });
+  items.push({ name: 'materials', label: 'Vật tư', icon: Package });
   
   if (appStore.hasAnyPaymentAccess) {
     items.push({ name: 'payments', label: 'Thanh toán', icon: CreditCard });

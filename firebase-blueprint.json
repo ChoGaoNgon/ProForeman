@@ -111,6 +111,22 @@
         "updated_at": { "type": "number" }
       }
     },
+    "Material": {
+      "title": "Vật tư dự án",
+      "description": "Thông tin nhập vật tư cho dự án gồm ngày tháng, đơn vị, số lượng, đơn giá",
+      "type": "object",
+      "properties": {
+        "project_id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "material_name": { "type": "string" },
+        "unit": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit_price": { "type": "number" },
+        "is_deleted": { "type": "number" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["project_id", "date", "material_name", "unit", "quantity", "unit_price"]
+    }
   },
   "firestore": {
     "departments": { "schema": "Department", "description": "Collections of departments" },
@@ -119,6 +135,7 @@
     "project_roles": { "schema": "ProjectRole", "description": "Roles within projects" },
     "project_assignments": { "schema": "ProjectAssignment", "description": "Mapping employees to projects" },
     "payments": { "schema": "Payment", "description": "Financial records" },
-    "reports": { "schema": "Report", "description": "Field reports" }
+    "reports": { "schema": "Report", "description": "Field reports" },
+    "materials": { "schema": "Material", "description": "Materials records per project" }
   }
 }

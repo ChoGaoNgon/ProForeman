@@ -23,6 +23,7 @@ const router = createRouter({
         { path: 'project-roles', name: 'project-roles', component: () => import('@/views/ProjectRolesView.vue'), meta: { adminOnly: true } },
         { path: 'reports', name: 'reports', component: () => import('@/views/ReportsView.vue') },
         { path: 'payments', name: 'payments', component: () => import('@/views/PaymentsView.vue') },
+        { path: 'materials', name: 'materials', component: () => import('@/views/MaterialsView.vue') },
       ]
     }
   ]

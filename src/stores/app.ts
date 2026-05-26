@@ -19,7 +19,7 @@ import { db, OperationType, handleFirestoreError } from '@/services/firebase';
 
 import { useAuthStore } from '@/stores/auth';
 
-const ENTITIES = ['departments', 'employees', 'project_roles', 'projects', 'payments', 'project_assignments'];
+const ENTITIES = ['departments', 'employees', 'project_roles', 'projects', 'payments', 'project_assignments', 'materials'];
 
 export const useAppStore = defineStore('app', {
   state: () => ({
@@ -30,6 +30,7 @@ export const useAppStore = defineStore('app', {
     payments: [] as any[],
     reports: [] as any[],
     project_assignments: [] as any[],
+    materials: [] as any[],
     isInitialLoad: true,
     isLoading: false
   }),
@@ -82,6 +83,16 @@ export const useAppStore = defineStore('app', {
       return state.reports.filter(r => myProjectIds.includes(r.project_id));
     },
 
+    visibleMaterials: (state) => {
+      const authStore = useAuthStore();
+      if (!authStore.user) return [];
+      if (authStore.isAdmin) return state.materials;
+      
+      const myAssignments = state.project_assignments.filter(a => a.employee_id === authStore.user!.id);
+      const myProjectIds = myAssignments.map(a => a.project_id);
+      return state.materials.filter(m => myProjectIds.includes(m.project_id));
+    },
+
     hasAnyPaymentAccess() {
       const authStore = useAuthStore();
       if (authStore.isAdmin) return true;
@@ -126,6 +137,7 @@ export const useAppStore = defineStore('app', {
       this.projects = [];
       this.payments = [];
       this.reports = [];
+      this.materials = [];
       this.isInitialLoad = true;
     },
 
@@ -151,6 +163,10 @@ export const useAppStore = defineStore('app', {
         this.project_assignments = this.project_assignments.filter(a => a.is_deleted !== 1);
         this.payments = this.payments.filter(p => p.is_deleted !== 1).sort((a, b) => (b.payment_date || '').localeCompare(a.payment_date || ''));
         this.reports = this.reports.filter(r => r.is_deleted !== 1).sort((a, b) => (b.report_date || '').localeCompare(a.report_date || ''));
+        
+        if (this.materials) {
+          this.materials = this.materials.filter(m => m.is_deleted !== 1).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        }
 
         // Auto-migrate assignment IDs if Admin is logged in
         const authStore = useAuthStore();

@@ -176,6 +176,36 @@ const recoveryTimeline = computed(() => {
   return ((now - start) / (end - start)) * 100;
 });
 
+// Project Notes Logic
+const isEditingNotes = ref(false);
+const notesDraft = ref('');
+
+const startEditNotes = () => {
+  notesDraft.value = project.value.notes || '';
+  isEditingNotes.value = true;
+};
+
+const cancelEditNotes = () => {
+  isEditingNotes.value = false;
+};
+
+const saveNotes = async () => {
+  if (!project.value || actionLoading.value) return;
+  actionLoading.value = true;
+  try {
+    await appStore.saveEntity('projects', 'UPDATE', {
+      ...project.value,
+      notes: notesDraft.value
+    });
+    project.value.notes = notesDraft.value;
+    isEditingNotes.value = false;
+  } catch (err) {
+    console.error('Error saving project notes:', err);
+  } finally {
+    actionLoading.value = false;
+  }
+};
+
 // Assign Modal Logic
 const showAssignModal = ref(false);
 const assignForm = reactive({
@@ -554,6 +584,63 @@ const handleDeleteProject = async () => {
               <div>
                 <p class="text-[9px] font-black text-neutral-400 uppercase tracking-widest mb-1">Thực thanh toán lũy kế</p>
                 <p class="text-lg font-black text-neutral-900">{{ formatCurrency(financialMetrics.totalPaid) }}</p>
+              </div>
+           </div>
+        </div>
+
+        <!-- Project Notes Panel -->
+        <div class="bg-white p-6 rounded-[2rem] border border-neutral-100 shadow-sm space-y-4">
+           <div class="flex items-center justify-between">
+              <h2 class="text-[10px] font-black text-neutral-900 uppercase tracking-widest flex items-center gap-2">
+                <ScrollText :size="14" class="text-neutral-500" />
+                Ghi chú dự án
+              </h2>
+              <button 
+                v-if="!isEditingNotes" 
+                @click="startEditNotes"
+                class="text-xs text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 uppercase text-[9px] tracking-widest font-black"
+              >
+                <Edit2 :size="10" />
+                Cập nhật
+              </button>
+           </div>
+           
+           <div v-if="isEditingNotes" class="space-y-3">
+              <textarea 
+                v-model="notesDraft" 
+                rows="5" 
+                class="w-full p-4 bg-neutral-50 border border-neutral-100 rounded-2xl text-[12px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all leading-relaxed text-neutral-800" 
+                placeholder="Nhập ghi chú quan trọng về tiến độ, lưu ý công trình, hoặc thông tin liên hệ..."
+              ></textarea>
+              <div class="flex gap-2 justify-end">
+                <button 
+                  @click="cancelEditNotes" 
+                  class="px-4 py-2 border border-neutral-200 text-neutral-500 rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-neutral-50 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button 
+                  @click="saveNotes" 
+                  :disabled="actionLoading"
+                  class="px-4 py-2 bg-neutral-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-neutral-800 transition-colors disabled:opacity-50"
+                >
+                  Lưu
+                </button>
+              </div>
+           </div>
+           <div v-else>
+              <div v-if="project.notes" class="text-neutral-600 text-[12px] leading-relaxed whitespace-pre-wrap p-4 bg-neutral-50 rounded-2xl border border-neutral-50">
+                 {{ project.notes }}
+              </div>
+              <div v-else class="text-center py-6 px-4 bg-neutral-50/50 rounded-2xl border border-dashed border-neutral-200">
+                 <p class="text-[11px] font-medium text-neutral-400">Chưa có ghi chú nào cho dự án này.</p>
+                 <button 
+                   @click="startEditNotes" 
+                   class="mt-3 px-4 py-1.5 bg-neutral-900 text-white text-[9px] font-black uppercase rounded-lg tracking-wider hover:bg-neutral-800 transition-all inline-flex items-center gap-1"
+                 >
+                   <Plus :size="10" />
+                   Thêm ghi chú
+                 </button>
               </div>
            </div>
         </div>
