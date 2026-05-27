@@ -156,7 +156,7 @@ const handleSubmit = async () => {
             </div>
           </div>
           <div>
-            <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Bàn giao dự kiến</label>
+            <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Dự kiến kết thúc</label>
             <div class="relative">
               <Calendar class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" :size="18" />
               <input 
