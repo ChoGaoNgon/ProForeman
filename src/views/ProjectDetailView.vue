@@ -164,17 +164,7 @@ const updateRiskStatus = async (newRisk: string) => {
   }
 };
 
-const recoveryTimeline = computed(() => {
-  if (!project.value?.start_date || !project.value?.end_date) return 0;
-  const start = new Date(project.value.start_date).getTime();
-  const end = new Date(project.value.end_date).getTime();
-  const now = new Date().getTime();
-  
-  if (now < start) return 0;
-  if (now > end) return 100;
-  
-  return ((now - start) / (end - start)) * 100;
-});
+
 
 // Project Notes Logic
 const isEditingNotes = ref(false);
@@ -372,16 +362,7 @@ const handleDeleteProject = async () => {
           </div>
         </div>
 
-        <!-- Progress Timeline -->
-        <div class="mb-8">
-           <div class="flex items-center justify-between mb-2">
-              <span class="text-[9px] font-black text-white/40 uppercase tracking-widest">Tiến trình thời hạn thu hồi</span>
-              <span class="text-[10px] font-black">{{ Math.round(recoveryTimeline) }}%</span>
-           </div>
-           <div class="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-              <div class="h-full bg-blue-500 rounded-full transition-all duration-1000" :style="{ width: `${recoveryTimeline}%` }"></div>
-           </div>
-        </div>
+
 
         <div class="flex items-center gap-3 mt-6 flex-wrap">
           <div v-if="project.location" class="flex items-center px-4 py-2 bg-white/5 rounded-xl border border-white/10">

@@ -25,6 +25,10 @@ const router = createRouter({
         { path: 'payments', name: 'payments', component: () => import('@/views/PaymentsView.vue') },
         { path: 'materials', name: 'materials', component: () => import('@/views/MaterialsView.vue') },
       ]
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/'
     }
   ]
 });
