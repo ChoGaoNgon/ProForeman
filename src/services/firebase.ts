@@ -4,7 +4,7 @@ import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
 
 // Connectivity Test
@@ -12,8 +12,9 @@ async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error: any) {
-    if (error?.message?.includes('offline')) {
-      console.warn("Firebase client is offline. Check configuration.");
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (errorMsg.includes('the client is offline') || errorMsg.includes('offline')) {
+      console.error("Please check your Firebase configuration.");
     }
   }
 }

@@ -20,7 +20,8 @@ import {
   Activity as ActivityIcon,
   Package,
   Truck,
-  Settings
+  Settings,
+  Calendar
 } from 'lucide-vue-next';
 
 const authStore = useAuthStore();
@@ -38,6 +39,7 @@ const navItems = computed(() => {
 
   items.push({ name: 'projects', label: 'Dự án', icon: Briefcase });
   items.push({ name: 'reports', label: 'Báo cáo', icon: ClipboardList });
+  items.push({ name: 'calendar', label: 'Lịch làm việc', icon: Calendar });
   items.push({ name: 'materials', label: 'Vật tư', icon: Package });
   items.push({ name: 'suppliers', label: 'Nhà cung cấp', icon: Truck });
   
