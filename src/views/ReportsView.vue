@@ -86,15 +86,91 @@ const form = reactive({
   next_tasks: ''
 });
 
+const sendTelegramNotification = async (formData: any, reporterName: string) => {
+  const channelConfig = appStore.system_configs?.find(
+    (c: any) => c.name?.trim().toLowerCase() === 'kênh báo cáo'
+  );
+  if (!channelConfig) {
+    console.log('No Telegram "Kênh Báo cáo" configuration found.');
+    return;
+  }
+
+  const { telegram_bot_token, telegram_chat_id } = channelConfig;
+  if (!telegram_bot_token || !telegram_chat_id) {
+    console.log('Telegram "Kênh Báo cáo" configurations are incomplete.');
+    return;
+  }
+
+  const formatDateVN = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
+  const textMessage = `📋 *BÁO CÁO CÔNG VIỆC*
+
+👤 *Người báo cáo:* ${reporterName}
+📅 *Ngày báo cáo:* ${formatDateVN(formData.report_date)}
+🏗️ *Dự án:* ${getProjectName(formData.project_id)}
+
+🛠️ *Nội dung công việc*
+
+${formData.tasks_summary || 'Chưa có ghi nhận'}
+
+⚠️ *Khó khăn & Vấn đề*
+
+${formData.issues || 'Không có ghi nhận'}
+
+💡 *Giải pháp*
+
+${formData.resolutions || 'Không có ghi nhận'}
+
+📌 *Kế hoạch kỳ tiếp theo*
+
+${formData.next_tasks || 'Đang cập nhật kế hoạch thi công...'}`;
+
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${telegram_bot_token.trim()}/sendMessage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        chat_id: telegram_chat_id.trim(),
+        text: textMessage,
+        parse_mode: 'Markdown'
+      })
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Failed to send Telegram notification:', response.status, errorText);
+    } else {
+      console.log('Telegram report notification sent successfully.');
+    }
+  } catch (err) {
+    console.error('Network error during Telegram notification:', err);
+  }
+};
+
 const handleSubmit = async () => {
   if (!form.project_id || loading.value) return;
   loading.value = true;
   try {
+    const reporterName = authStore.user?.name || getEmployeeName(authStore.user?.id) || 'Không rõ';
+    const reportDataCopy = { ...form };
+    
     await appStore.saveEntity('reports', 'CREATE', {
       ...form,
       employee_id: authStore.user?.id,
       progress_percent: 0 // Keep for compatibility
     });
+    
+    // Asynchronously dispatch selection without blocking user redirect/loading flow
+    sendTelegramNotification(reportDataCopy, reporterName);
+
     Object.assign(form, {
       project_id: '',
       type: 'DAILY',

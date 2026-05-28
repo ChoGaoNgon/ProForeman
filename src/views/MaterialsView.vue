@@ -54,9 +54,36 @@ const initialFormState = {
   unit: 'kg',
   quantity: 0,
   unit_price: 0,
+  origin: '',
+  supplier_id: '',
 };
 
 const form = reactive({ ...initialFormState });
+
+// Suggestions logic
+const isSuggestionsOpen = ref(false);
+
+const matchingSuppliers = computed(() => {
+  const list = appStore.suppliers || [];
+  const q = form.origin.trim().toLowerCase();
+  if (!q) return list;
+  return list.filter((s: any) => 
+    (s.name || '').toLowerCase().includes(q) ||
+    (s.code || '').toLowerCase().includes(q)
+  );
+});
+
+const selectSupplier = (supplier: any) => {
+  form.origin = supplier.name;
+  form.supplier_id = supplier.id;
+  isSuggestionsOpen.value = false;
+};
+
+const handleBlur = () => {
+  setTimeout(() => {
+    isSuggestionsOpen.value = false;
+  }, 250);
+};
 
 // Popular Units suggestions
 const popularUnits = ['kg', 'tấn', 'khối (m3)', 'bộ', 'bao', 'viên', 'cái', 'lít', 'm', 'm2'];
@@ -96,9 +123,18 @@ const filteredMaterials = computed(() => {
   
   if (appliedSearchQuery.value.trim()) {
     const q = appliedSearchQuery.value.toLowerCase();
-    list = list.filter(m => 
-      (m.material_name || '').toLowerCase().includes(q)
-    );
+    list = list.filter(m => {
+      const nameMatch = (m.material_name || '').toLowerCase().includes(q);
+      const originMatch = (m.origin || '').toLowerCase().includes(q);
+      
+      const supplier = appStore.suppliers ? appStore.suppliers.find((s: any) => s.id === m.supplier_id) : null;
+      const supplierMatch = supplier && (
+        (supplier.name || '').toLowerCase().includes(q) ||
+        (supplier.code || '').toLowerCase().includes(q)
+      );
+      
+      return nameMatch || originMatch || supplierMatch;
+    });
   }
   
   return list;
@@ -158,6 +194,8 @@ const openEditModal = (material: any) => {
     unit: material.unit,
     quantity: material.quantity,
     unit_price: material.unit_price,
+    origin: material.origin || '',
+    supplier_id: material.supplier_id || '',
   });
   isModalOpen.value = true;
 };
@@ -175,6 +213,8 @@ const handleSubmit = async () => {
       unit: form.unit,
       quantity: Number(form.quantity),
       unit_price: Number(form.unit_price),
+      origin: form.origin || '',
+      supplier_id: form.supplier_id || '',
     };
     
     if (modalMode.value === 'CREATE') {
@@ -275,7 +315,7 @@ const handleDelete = async (material: any) => {
             v-model="draftSearchQuery"
             type="text" 
             @keyup.enter="handleSearch"
-            placeholder="Tìm theo tên vật tư..."
+            placeholder="Tìm theo vật tư, nguồn gốc, nhà cung cấp..."
             class="w-full h-12 pl-12 pr-4 bg-neutral-50 border border-neutral-100 rounded-xl font-bold text-xs outline-none focus:border-blue-500 transition-all"
           />
           <Search :size="16" class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
@@ -301,6 +341,7 @@ const handleDelete = async (material: any) => {
               <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Ngày nhập</th>
               <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Dự án</th>
               <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Vật tư</th>
+              <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Nguồn gốc</th>
               <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Đơn vị</th>
               <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">Số lượng</th>
               <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">Đơn giá (VNĐ)</th>
@@ -310,7 +351,7 @@ const handleDelete = async (material: any) => {
           </thead>
           <tbody>
             <tr v-if="filteredMaterials.length === 0" class="text-center text-neutral-400 py-24 italic">
-              <td colspan="8" class="py-20 text-center">
+              <td colspan="9" class="py-20 text-center">
                 <div class="flex flex-col items-center justify-center space-y-3">
                   <div class="w-16 h-16 bg-neutral-50 rounded-2xl flex items-center justify-center text-neutral-300">
                     <Package :size="32" />
@@ -335,6 +376,12 @@ const handleDelete = async (material: any) => {
                 <span class="text-sm font-extrabold text-neutral-900 block">
                   {{ item.material_name }}
                 </span>
+              </td>
+              <td class="px-8 py-5">
+                <span class="px-3 py-1 bg-neutral-100 border border-neutral-200 rounded-lg text-[10px] font-black text-neutral-600 uppercase tracking-widest block max-w-[150px] truncate" v-if="item.origin" :title="item.origin">
+                  {{ item.origin }}
+                </span>
+                <span class="text-neutral-300 italic text-xs font-bold" v-else>Không rõ</span>
               </td>
               <td class="px-8 py-5 font-bold text-xs text-neutral-400 whitespace-nowrap uppercase">
                 {{ item.unit }}
@@ -445,6 +492,39 @@ const handleDelete = async (material: any) => {
                 placeholder="Ví dụ: Cát vàng sông Hồng, Xi măng Holcim PC40, Thép Việt Úc..."
                 class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-2xl font-extrabold outline-none focus:border-blue-500 transition-all"
               />
+            </div>
+
+            <!-- Nguồn gốc vật tư -->
+            <div class="relative">
+              <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 flex items-center justify-between">
+                <span>Nguồn gốc vật tư / Nhà cung cấp</span>
+                <span v-if="form.supplier_id" class="text-blue-600 font-extrabold normal-case">Đã liên kết đối tác</span>
+              </label>
+              <input 
+                v-model="form.origin"
+                @focus="isSuggestionsOpen = true"
+                @input="isSuggestionsOpen = true"
+                @blur="handleBlur"
+                type="text" 
+                placeholder="Gõ tìm kiếm đối tác hoặc tự nhập... (VD: HOAPHAT, VNCC...)"
+                class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-2xl font-extrabold outline-none focus:border-blue-500 transition-all text-neutral-900 text-sm"
+              />
+              
+              <!-- Suggestions Dropdown -->
+              <div v-if="isSuggestionsOpen && matchingSuppliers.length > 0" class="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-neutral-200 rounded-2xl shadow-xl divide-y divide-neutral-50">
+                <div 
+                  v-for="s in matchingSuppliers" 
+                  :key="s.id"
+                  @mousedown="selectSupplier(s)"
+                  class="px-4 py-3 hover:bg-neutral-50 cursor-pointer flex items-center justify-between transition-colors"
+                >
+                  <div class="flex flex-col">
+                    <span class="text-xs font-black text-neutral-800 uppercase">{{ s.name }}</span>
+                    <span class="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Mã: {{ s.code }}</span>
+                  </div>
+                  <span class="text-[9px] font-black uppercase text-blue-600 tracking-widest bg-blue-50 px-2 py-0.5 rounded">Gợi ý</span>
+                </div>
+              </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

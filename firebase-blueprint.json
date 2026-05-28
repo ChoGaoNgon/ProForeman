@@ -135,10 +135,39 @@
         "unit": { "type": "string" },
         "quantity": { "type": "number" },
         "unit_price": { "type": "number" },
+        "origin": { "type": "string" },
+        "supplier_id": { "type": "string" },
         "is_deleted": { "type": "number" },
         "updated_at": { "type": "number" }
       },
       "required": ["project_id", "date", "material_name", "unit", "quantity", "unit_price"]
+    },
+    "Supplier": {
+      "title": "Nhà cung cấp vật tư",
+      "description": "Danh bạ nhà cung cấp vật tư công ty",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "is_deleted": { "type": "number" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["name", "code"]
+    },
+    "SystemConfig": {
+      "title": "Cấu hình hệ thống",
+      "description": "Cấu hình bot telegram và các tham số hệ thống",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "telegram_bot_token": { "type": "string" },
+        "telegram_chat_id": { "type": "string" },
+        "is_deleted": { "type": "number" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["name", "telegram_bot_token", "telegram_chat_id"]
     }
   },
   "firestore": {
@@ -150,6 +179,8 @@
     "project_assignments": { "schema": "ProjectAssignment", "description": "Mapping employees to projects" },
     "payments": { "schema": "Payment", "description": "Financial records" },
     "reports": { "schema": "Report", "description": "Field reports" },
-    "materials": { "schema": "Material", "description": "Materials records per project" }
+    "materials": { "schema": "Material", "description": "Materials records per project" },
+    "suppliers": { "schema": "Supplier", "description": "Material suppliers dictionary" },
+    "system_configs": { "schema": "SystemConfig", "description": "System configs and parameters" }
   }
 }

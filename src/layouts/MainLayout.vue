@@ -18,7 +18,9 @@ import {
   X,
   Bell,
   Activity as ActivityIcon,
-  Package
+  Package,
+  Truck,
+  Settings
 } from 'lucide-vue-next';
 
 const authStore = useAuthStore();
@@ -37,6 +39,7 @@ const navItems = computed(() => {
   items.push({ name: 'projects', label: 'Dự án', icon: Briefcase });
   items.push({ name: 'reports', label: 'Báo cáo', icon: ClipboardList });
   items.push({ name: 'materials', label: 'Vật tư', icon: Package });
+  items.push({ name: 'suppliers', label: 'Nhà cung cấp', icon: Truck });
   
   if (appStore.hasAnyPaymentAccess) {
     items.push({ name: 'payments', label: 'Thanh toán', icon: CreditCard });
@@ -47,6 +50,7 @@ const navItems = computed(() => {
     items.push({ name: 'department-positions', label: 'Chức danh PB', icon: UserCheck });
     items.push({ name: 'employees', label: 'Nhân sự', icon: Users });
     items.push({ name: 'project-roles', label: 'Chức danh dự án', icon: UserSquare2 });
+    items.push({ name: 'settings', label: 'Cấu hình hệ thống', icon: Settings });
   }
   
   return items;

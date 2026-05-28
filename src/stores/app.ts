@@ -19,7 +19,7 @@ import { db, OperationType, handleFirestoreError } from '@/services/firebase';
 
 import { useAuthStore } from '@/stores/auth';
 
-const ENTITIES = ['departments', 'employees', 'project_roles', 'department_positions', 'projects', 'payments', 'project_assignments', 'materials'];
+const ENTITIES = ['departments', 'employees', 'project_roles', 'department_positions', 'projects', 'payments', 'project_assignments', 'materials', 'suppliers'];
 
 export const useAppStore = defineStore('app', {
   state: () => ({
@@ -32,6 +32,8 @@ export const useAppStore = defineStore('app', {
     reports: [] as any[],
     project_assignments: [] as any[],
     materials: [] as any[],
+    suppliers: [] as any[],
+    system_configs: [] as any[],
     isInitialLoad: true,
     isLoading: false
   }),
@@ -140,6 +142,8 @@ export const useAppStore = defineStore('app', {
       this.payments = [];
       this.reports = [];
       this.materials = [];
+      this.suppliers = [];
+      this.system_configs = [];
       this.isInitialLoad = true;
     },
 
@@ -166,13 +170,22 @@ export const useAppStore = defineStore('app', {
         this.project_assignments = this.project_assignments.filter(a => a.is_deleted !== 1);
         this.payments = this.payments.filter(p => p.is_deleted !== 1).sort((a, b) => (b.payment_date || '').localeCompare(a.payment_date || ''));
         this.reports = this.reports.filter(r => r.is_deleted !== 1).sort((a, b) => (b.report_date || '').localeCompare(a.report_date || ''));
+        this.suppliers = (this.suppliers || []).filter(s => s.is_deleted !== 1);
         
         if (this.materials) {
           this.materials = this.materials.filter(m => m.is_deleted !== 1).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
         }
 
-        // Auto-migrate assignment IDs if Admin is logged in
         const authStore = useAuthStore();
+        try {
+          const configSnap = await getDocs(collection(db, 'system_configs'));
+          this.system_configs = configSnap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter((c: any) => c.is_deleted !== 1);
+        } catch (configErr) {
+          console.error('Error loading system configs:', configErr);
+        }
+
         if (authStore.isAdmin) {
           this.migrateAssignmentIds();
         }
