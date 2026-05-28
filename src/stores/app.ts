@@ -19,13 +19,14 @@ import { db, OperationType, handleFirestoreError } from '@/services/firebase';
 
 import { useAuthStore } from '@/stores/auth';
 
-const ENTITIES = ['departments', 'employees', 'project_roles', 'projects', 'payments', 'project_assignments', 'materials'];
+const ENTITIES = ['departments', 'employees', 'project_roles', 'department_positions', 'projects', 'payments', 'project_assignments', 'materials'];
 
 export const useAppStore = defineStore('app', {
   state: () => ({
     departments: [] as any[],
     employees: [] as any[],
     project_roles: [] as any[],
+    department_positions: [] as any[],
     projects: [] as any[],
     payments: [] as any[],
     reports: [] as any[],
@@ -134,6 +135,7 @@ export const useAppStore = defineStore('app', {
       this.departments = [];
       this.employees = [];
       this.project_roles = [];
+      this.department_positions = [];
       this.projects = [];
       this.payments = [];
       this.reports = [];
@@ -159,6 +161,7 @@ export const useAppStore = defineStore('app', {
         this.departments = this.departments.filter(d => d.is_deleted !== 1);
         this.employees = this.employees.filter(e => e.is_active !== 0 && e.is_active !== false);
         this.project_roles = this.project_roles.filter(r => r.is_deleted !== 1);
+        this.department_positions = (this.department_positions || []).filter(p => p.is_deleted !== 1);
         this.projects = this.projects.filter(p => p.is_deleted !== 1);
         this.project_assignments = this.project_assignments.filter(a => a.is_deleted !== 1);
         this.payments = this.payments.filter(p => p.is_deleted !== 1).sort((a, b) => (b.payment_date || '').localeCompare(a.payment_date || ''));

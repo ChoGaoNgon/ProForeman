@@ -23,15 +23,19 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data;
     }
 
+    function employeeExists() {
+      return exists(/databases/$(database)/documents/employees/$(request.auth.uid));
+    }
+
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.email == 'dang.nh.aprotrain@gmail.com' ||
-        getEmployee().system_role == 'ADMIN'
+        (employeeExists() && getEmployee().get('system_role', '') == 'ADMIN')
       );
     }
 
     function isCEO() {
-      return isSignedIn() && getEmployee().system_role == 'CEO';
+      return isSignedIn() && employeeExists() && getEmployee().get('system_role', '') == 'CEO';
     }
 
     function canManageProject(projectId) {
@@ -94,6 +98,12 @@ service cloud.firestore {
 
     // Project Roles
     match /project_roles/{roleId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Department Positions
+    match /department_positions/{posId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }

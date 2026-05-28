@@ -29,6 +29,42 @@ const updateRole = async (empId: string, role: string) => {
   }
 };
 
+const updateDeptPosition = async (empId: string, positionId: string) => {
+  if (loading.value) return;
+  loading.value = true;
+  try {
+    const emp = appStore.employees.find(e => e.id === empId);
+    if (emp) {
+      await appStore.saveEntity('employees', 'UPDATE', {
+        ...emp,
+        department_position_id: positionId
+      });
+    }
+  } catch (err) {
+    console.error('Error updating employee department position:', err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const updateDepartment = async (empId: string, departmentId: string) => {
+  if (loading.value) return;
+  loading.value = true;
+  try {
+    const emp = appStore.employees.find(e => e.id === empId);
+    if (emp) {
+      await appStore.saveEntity('employees', 'UPDATE', {
+        ...emp,
+        department_id: departmentId
+      });
+    }
+  } catch (err) {
+    console.error('Error updating employee department:', err);
+  } finally {
+    loading.value = false;
+  }
+};
+
 const toggleActive = async (empId: string) => {
   if (loading.value) return;
   const emp = appStore.employees.find(e => e.id === empId);
@@ -90,12 +126,13 @@ const filteredEmployees = computed(() => {
       />
     </div>
 
-    <div class="bg-white rounded-[2rem] border border-neutral-100 shadow-sm overflow-hidden">
+    <div class="bg-white rounded-[2rem] border border-neutral-100 shadow-sm overflow-auto">
       <table class="w-full text-left">
         <thead class="bg-neutral-50/50">
           <tr class="text-[10px] font-black text-neutral-400 uppercase tracking-[0.2em] border-b border-neutral-100">
             <th class="px-8 py-5">Nhân sự</th>
             <th class="px-8 py-5">Phòng ban</th>
+            <th class="px-8 py-5">Chức danh PB</th>
             <th class="px-8 py-5">Vai trò hệ thống</th>
             <th class="px-8 py-5 text-right">Trạng thái</th>
           </tr>
@@ -113,9 +150,28 @@ const filteredEmployees = computed(() => {
               </div>
             </td>
             <td class="px-8 py-5">
-               <span class="px-3 py-1 bg-neutral-50 border border-neutral-100 rounded-lg text-[10px] font-black text-neutral-500 uppercase tracking-widest">
-                 {{ getDeptName(emp.department_id) }}
-               </span>
+               <select 
+                 :value="emp.department_id || ''"
+                 @change="updateDepartment(emp.id, ($event.target as HTMLSelectElement).value)"
+                 class="h-9 px-3 bg-white border border-neutral-100 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-blue-500 cursor-pointer text-neutral-700 max-w-[170px]"
+               >
+                 <option value="">CHƯA PHÂN BỔ</option>
+                 <option v-for="dept in appStore.departments" :key="dept.id" :value="dept.id">
+                   {{ dept.name }}
+                 </option>
+               </select>
+            </td>
+            <td class="px-8 py-5">
+               <select 
+                 :value="emp.department_position_id || ''"
+                 @change="updateDeptPosition(emp.id, ($event.target as HTMLSelectElement).value)"
+                 class="h-9 px-3 bg-white border border-neutral-100 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-blue-500 cursor-pointer text-neutral-700 max-w-[170px]"
+               >
+                 <option value="">CHƯA GÁN</option>
+                 <option v-for="pos in appStore.department_positions" :key="pos.id" :value="pos.id">
+                   {{ pos.name }} ({{ pos.code }})
+                 </option>
+               </select>
             </td>
             <td class="px-8 py-5">
                <select 

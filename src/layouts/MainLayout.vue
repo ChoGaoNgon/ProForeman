@@ -9,6 +9,7 @@ import {
   Users, 
   Briefcase, 
   UserSquare2, 
+  UserCheck,
   ClipboardList, 
   CreditCard,
   LogOut,
@@ -43,8 +44,9 @@ const navItems = computed(() => {
   
   if (authStore.isAdmin) {
     items.push({ name: 'departments', label: 'Phòng ban', icon: Building2 });
+    items.push({ name: 'department-positions', label: 'Chức danh PB', icon: UserCheck });
     items.push({ name: 'employees', label: 'Nhân sự', icon: Users });
-    items.push({ name: 'project-roles', label: 'Chức danh', icon: UserSquare2 });
+    items.push({ name: 'project-roles', label: 'Chức danh dự án', icon: UserSquare2 });
   }
   
   return items;

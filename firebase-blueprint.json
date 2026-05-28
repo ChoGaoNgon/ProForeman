@@ -21,6 +21,7 @@
         "username": { "type": "string" },
         "system_role": { "type": "string", "enum": ["ADMIN", "CEO", "LEADER", "STAFF"] },
         "department_id": { "type": "string" },
+        "department_position_id": { "type": "string" },
         "is_active": { "type": "boolean" },
         "photo_url": { "type": "string" },
         "updated_at": { "type": "number" }
@@ -59,6 +60,18 @@
       "properties": {
         "name": { "type": "string" },
         "code": { "type": "string" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["name", "code"]
+    },
+    "DepartmentPosition": {
+      "title": "Chức danh phòng ban",
+      "description": "Danh mục các chức danh/vị trí công việc thuộc phòng ban công ty",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "is_deleted": { "type": "number" },
         "updated_at": { "type": "number" }
       },
       "required": ["name", "code"]
@@ -133,6 +146,7 @@
     "employees": { "schema": "Employee", "description": "User profiles and roles" },
     "projects": { "schema": "Project", "description": "Construction projects" },
     "project_roles": { "schema": "ProjectRole", "description": "Roles within projects" },
+    "department_positions": { "schema": "DepartmentPosition", "description": "Positions/titles within company departments" },
     "project_assignments": { "schema": "ProjectAssignment", "description": "Mapping employees to projects" },
     "payments": { "schema": "Payment", "description": "Financial records" },
     "reports": { "schema": "Report", "description": "Field reports" },

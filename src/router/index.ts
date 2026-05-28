@@ -17,6 +17,7 @@ const router = createRouter({
       children: [
         { path: '', name: 'dashboard', component: () => import('@/views/DashboardView.vue') },
         { path: 'departments', name: 'departments', component: () => import('@/views/DepartmentsView.vue'), meta: { adminOnly: true } },
+        { path: 'department-positions', name: 'department-positions', component: () => import('@/views/DepartmentPositionsView.vue'), meta: { adminOnly: true } },
         { path: 'employees', name: 'employees', component: () => import('@/views/EmployeesView.vue'), meta: { adminOnly: true } },
         { path: 'projects', name: 'projects', component: () => import('@/views/ProjectsView.vue') },
         { path: 'projects/:id', name: 'project-detail', component: () => import('@/views/ProjectDetailView.vue') },
