@@ -46,3 +46,18 @@ File `src/router/index.ts` chứa các logic bảo mật route:
 Các quy tắc bảo mật trong `firestore.rules` cần được cập nhật tương ứng với logic RBAC này để đảm bảo an toàn dữ liệu từ phía server. Hiện tại, server-side rules tuân thủ:
 - `get()` từ bảng `employees` để xác thực `system_role`.
 - `get()` từ bảng `project_assignments` để xác thực quyền truy cập dự án.
+
+## 5. Cơ Chế PWA & Tải Ứng Dụng (Progressive Web Application)
+
+### A. Cấu Hình Ứng Dụng Độc Lập (`public/manifest.json`)
+- Định nghĩa thông tin ứng dụng (`Bạch Đằng Invest ERP`), chế độ hiển thị `standalone` (ẩn toàn bộ thanh công cụ của trình duyệt để có giao diện app thuần túy), màu nền `#f8fafc`, màu chủ đạo `#2563eb`.
+- Khai báo logo vector chất lượng sắc nét (`/icon.svg`) làm biểu tượng ứng dụng đa kích thước, hỗ trợ cả `maskable` icon để bo góc tự nhiên trên hệ điều hành Android.
+
+### B. Service Worker Caching & Offline Fallback (`public/sw.js`)
+- **Chiến lược Stale-While-Revalidate**: Khi người dùng chuyển đổi qua lại giữa các menu, Service Worker trả về tài nguyên đã lưu trong Cache ngay lập tức giúp tốc độ hiển thị đạt < 50ms. Đồng thời, ngầm tạo yêu cầu mạng để cập nhật lại Cache mới nhất.
+- **Lọc Request thông minh**: Bỏ qua các API Firebase, REST Endpoint thời gian thực. Đối với các request điều hướng HTML bị ngắt mạng hoàn toàn, SW tự động fallback về `index.html` của trang Single-Page App để duy trì trải nghiệm liền mạch cho thiết bị.
+
+### C. Quản lý Sự kiện Cài đặt (`src/stores/pwa.ts`)
+- Lắng nghe sự kiện `beforeinstallprompt` từ Window, ngăn chặn popup mặc định của HĐH và lưu đối tượng `event` vào bộ nhớ Pinia State.
+- Cung cấp phương thức `install()` nhằm kích hoạt hộp thoại tải xuống của Google Chrome/Edge/Samsung Internet khi người dùng bấm vào nút tương tác **"Tải App"**.
+- Tích hợp bộ phát hiện `userAgent` cho iOS nhằm hiển thị hộp thoại hướng dẫn từng bước kích hoạt nút "Thêm vào MH chính" của trình duyệt Apple Safari.

@@ -5,7 +5,20 @@ ProForeman là ứng dụng quản lý tiến độ, nhân sự và tài chính 
 
 ## Các Tính Năng Vừa Cập Nhật
 
-### 1. Logic Tính Toán Tài Chính
+### 1. Tích Hợp PWA & Trải Nghiệm Di Động Độc Lập
+- **Cài đặt Không cần Cửa hàng Ứng dụng**: Cho phép người dùng trực tiếp tải và lưu ứng dụng vào màn hình chính của điện thoại hoặc máy tính (Home Screen) thông qua nút **Tải App** được tích hợp ở thanh điều hướng trên cùng hoặc thanh Sidebar cạnh bên.
+- **Hỗ trợ Thiết bị Apple (iOS)**: Tự động phát hiện trình duyệt Safari trên iPhone/iPad để hiển thị bảng hướng dẫn từng bước trực quan giúp người dùng thêm ứng dụng vào Màn hình chính thủ công một cách dễ dàng.
+- **Service Worker & Caching Ngoại tuyến**: Tải trước tất cả các tài nguyên giao diện cơ bản (App Shell) nhờ Service Worker hoạt động dưới chế độ *Stale-While-Revalidate*, giúp hệ thống khởi động cực nhanh kể cả khi ở hiện trường sóng yếu hay mất kết nối Internet.
+
+### 2. Giao Diện Lịch Cải Tiến Chuẩn Google Calendar
+- **Hiệu ứng ô ngày được chọn**: Sửa lỗi ô ngày chuyển hoàn toàn sang nền trắng khi bấm chọn. Giờ đây, ô ngày được chọn nổi bật nhờ đường viền mỏng xanh dương cùng hiệu ứng bắt mát (`ring`), trong khi toàn bộ nội dung lịch trình bên dưới vẫn giữ nguyên màu sắc hiển thị sắc nét.
+- **Chỉ báo chữ số ngày**: Trình bày ngày hiện tại bằng hình tròn xanh dương thẫm chữ trắng nổi bật, ngày được chọn bằng một hình tròn tối màu tinh giản.
+- **Thành phần sự kiện trực quan**: Lịch trình hiện trường sử dụng thanh màu nền dịu nhẹ với đường viền trái dày dặn, tiêu đề đậm nét giúp người dùng dễ dàng lướt xem lịch làm việc năng suất như trên Google Calendar thực tế.
+
+### 3. Nút Làm Mới Thủ Công (Manual Refresh)
+- Tiện ích nút **Làm mới dữ liệu** được đặt ngay bên cạnh bộ lọc dự án tại trang **Báo cáo**. Giúp người dùng/Chỉ huy trưởng nhanh chóng kéo hay tải lại dữ liệu công việc hiện trường mới nhất trực tiếp từ Firestore mà không phải tải lại toàn bộ trang web.
+
+### 4. Logic Tính Toán Tài Chính
 - **Thực thanh đợt này (Net Payment)**: Được tính bằng `Giá trị nghiệm thu - Thu hồi tạm ứng`.
 - **Khoản trích chi khác**: Được ghi nhận như một phần trong giá trị nghiệm thu để theo dõi các khoản chi dịch vụ ngoài, không cộng thêm vào giá trị thực thanh của nhà thầu.
 - **Lũy kế**: Tự động tính toán lũy kế nghiệm thu và thu hồi tạm ứng dựa trên các đợt thanh toán trước đó.
