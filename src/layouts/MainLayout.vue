@@ -21,14 +21,27 @@ import {
   Package,
   Truck,
   Settings,
-  Calendar
+  Calendar,
+  Download,
+  Smartphone,
+  Info
 } from 'lucide-vue-next';
+import { usePWAStore } from '@/stores/pwa';
 
 const authStore = useAuthStore();
 const appStore = useAppStore();
+const pwaStore = usePWAStore();
 const router = useRouter();
 const route = useRoute();
 const isSidebarOpen = ref(true);
+
+const isIOS = computed(() => {
+  if (typeof window === 'undefined') return false;
+  return /iPad|iPhone|iPod/.test(window.navigator.userAgent) && !(window as any).MSStream;
+});
+
+const showIOSGuide = ref(false);
+
 
 const navItems = computed(() => {
   const items: any[] = [];
@@ -114,6 +127,45 @@ onMounted(() => {
           </router-link>
         </nav>
 
+        <!-- PWA Installation Widget -->
+        <div v-if="(pwaStore.isInstallable || isIOS) && !pwaStore.isInstalled" class="px-4 py-3 mx-3 mb-3 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-2xl shadow-sm">
+          <div class="flex items-start gap-2.5">
+            <div class="p-1.5 bg-white/15 rounded-lg text-white shrink-0">
+              <Smartphone id="sidebar-pwa-smartphone" :size="16" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-bold leading-tight">BDI ERP Di Động</p>
+              <p class="text-[9px] text-blue-100 leading-normal mt-0.5">Đặt ứng dụng lên màn hình chính</p>
+            </div>
+          </div>
+          
+          <!-- Download trigger (Android, Chrome, standard PWA) -->
+          <button 
+            v-if="pwaStore.isInstallable"
+            @click="pwaStore.install"
+            class="mt-2.5 w-full py-1.5 bg-white text-blue-600 hover:bg-neutral-50 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
+            id="btn-sidebar-install"
+          >
+            <Download :size="12" />
+            Tải Ứng Dụng
+          </button>
+          
+          <!-- iOS Guide trigger (Safari) -->
+          <div v-else-if="isIOS" class="mt-2 text-left">
+            <button 
+              @click="showIOSGuide = !showIOSGuide"
+              class="w-full py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 border border-white/20 cursor-pointer"
+              id="btn-sidebar-ios-guide"
+            >
+              <Info :size="12" />
+              Hướng dẫn cài đặt
+            </button>
+            <div v-if="showIOSGuide" class="mt-2 p-2 bg-black/20 rounded-lg text-[9px] text-blue-50 leading-relaxed font-semibold">
+              Bấm vào biểu tượng <strong class="text-white">Chia sẻ (Share)</strong> trên trình duyệt Safari, sau đó chọn <strong class="text-white">"Thêm vào Màn hình chính" ("Add to Home Screen")</strong>.
+            </div>
+          </div>
+        </div>
+
         <!-- User Profile -->
         <div class="p-4 border-t border-neutral-100">
           <div class="flex items-center gap-3 p-2 bg-neutral-50 rounded-xl mb-3">
@@ -155,6 +207,19 @@ onMounted(() => {
             <ActivityIcon :size="12" />
             <span>Đang tải dữ liệu...</span>
           </div>
+          
+          <!-- PWA Installation Button Header -->
+          <button 
+            v-if="pwaStore.isInstallable"
+            @click="pwaStore.install"
+            class="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm cursor-pointer"
+            id="btn-header-install"
+            title="Tải ứng dụng về thiết bị"
+          >
+            <Download :size="14" />
+            <span>Tải App</span>
+          </button>
+
           <button class="p-2 text-neutral-400 hover:text-neutral-900 relative">
             <Bell :size="20" />
             <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>

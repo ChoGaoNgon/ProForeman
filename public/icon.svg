@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d4ed8" />
+      <stop offset="60%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+    
+    <!-- Accent Shadow & Shimmer -->
+    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Drop Shadow Filter for text / symbol -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#091e42" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Main Background Rounded Box -->
+  <rect width="100%" height="100%" rx="120" fill="url(#bg-grad)" />
+  
+  <!-- Subtle inner gradient shine -->
+  <rect width="100%" height="100%" rx="120" fill="url(#accent-grad)" />
+
+  <!-- Abstract elegant architectural geometric shapes representing investment/leasing / Bạch Đằng Invest -->
+  <g filter="url(#shadow)" transform="translate(116, 120)">
+    <!-- Base structural lines/shapes -->
+    <path d="M 0,220 L 140,220 L 140,110 L 70,40 L 0,110 Z" fill="#ffffff" fill-opacity="0.95" />
+    <path d="M 120,220 L 280,220 L 280,140 L 200,60 L 120,140 Z" fill="#3b82f6" fill-opacity="0.3" style="mix-blend-mode: multiply;" />
+    <path d="M 140,220 L 280,220 L 280,140 L 210,70 L 140,140 Z" fill="#eff6ff" />
+    
+    <!-- Bold Letter representation for BDI -->
+    <text x="140" y="200" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="52" fill="url(#bg-grad)" text-anchor="middle" letter-spacing="1">BDI</text>
+
+    <!-- Minimalist upward expansion arrow/investment index representing grow -->
+    <polygon points="140,0 180,45 155,45 155,90 125,90 125,45 100,45" fill="#facc15" />
+  </g>
+
+  <!-- Accent glow border -->
+  <rect x="4" y="4" width="504" height="504" rx="116" fill="none" stroke="#ffffff" stroke-width="8" stroke-opacity="0.1" />
+</svg>
