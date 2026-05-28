@@ -13,13 +13,15 @@ import {
   AlertCircle,
   CheckCircle2,
   X,
-  ScrollText
+  ScrollText,
+  RefreshCw
 } from 'lucide-vue-next';
 
 const appStore = useAppStore();
 const authStore = useAuthStore();
 const reports = ref<any[]>([]);
 const loading = ref(true);
+const isRefreshing = ref(false);
 const filterProjectId = ref('');
 const isFormOpen = ref(false);
 const isDetailOpen = ref(false);
@@ -30,6 +32,19 @@ const hasMore = ref(true);
 const openDetailModal = (report: any) => {
   selectedReportDetail.value = report;
   isDetailOpen.value = true;
+};
+
+const handleManualRefresh = async () => {
+  if (isRefreshing.value) return;
+  isRefreshing.value = true;
+  try {
+    await appStore.refreshAll();
+    await fetchReports();
+  } catch (err) {
+    console.error('Manual refresh of reports failed:', err);
+  } finally {
+    isRefreshing.value = false;
+  }
 };
 
 const fetchReports = async (isLoadMore = false) => {
@@ -210,6 +225,15 @@ const handleSubmit = async () => {
           <option value="">Lọc: Tất cả dự án</option>
           <option v-for="p in appStore.visibleProjects" :key="p.id" :value="p.id">{{ p.name }}</option>
         </select>
+        <button 
+          @click="handleManualRefresh"
+          :disabled="isRefreshing"
+          class="inline-flex items-center justify-center bg-white border border-neutral-100 hover:border-blue-400 text-neutral-600 hover:text-blue-600 rounded-xl p-2.5 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+          id="btn-manual-refresh"
+          title="Làm mới dữ liệu"
+        >
+          <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+        </button>
         <button 
           @click="isFormOpen = true"
           class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
