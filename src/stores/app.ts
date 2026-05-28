@@ -151,10 +151,15 @@ export const useAppStore = defineStore('app', {
       this.isLoading = true;
       try {
         const results = await Promise.all(ENTITIES.map(async (entity) => {
-          const q = query(collection(db, entity));
-          const snap = await getDocs(q);
-          const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          return { entity, data };
+          try {
+            const q = query(collection(db, entity));
+            const snap = await getDocs(q);
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            return { entity, data };
+          } catch (entityErr) {
+            console.warn(`Error compiling/loading entity ${entity} from Firestore:`, entityErr);
+            return { entity, data: [] };
+          }
         }));
 
         results.forEach(({ entity, data }) => {

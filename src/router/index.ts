@@ -26,6 +26,7 @@ const router = createRouter({
         { path: 'payments', name: 'payments', component: () => import('@/views/PaymentsView.vue') },
         { path: 'materials', name: 'materials', component: () => import('@/views/MaterialsView.vue') },
         { path: 'suppliers', name: 'suppliers', component: () => import('@/views/SuppliersView.vue') },
+        { path: 'calendar', name: 'calendar', component: () => import('@/views/CalendarView.vue') },
         { path: 'settings', name: 'settings', component: () => import('@/views/SettingsView.vue'), meta: { adminOnly: true } },
       ]
     },
