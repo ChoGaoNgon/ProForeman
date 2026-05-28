@@ -22,8 +22,15 @@ const reports = ref<any[]>([]);
 const loading = ref(true);
 const filterProjectId = ref('');
 const isFormOpen = ref(false);
+const isDetailOpen = ref(false);
+const selectedReportDetail = ref<any>(null);
 const lastDoc = ref<any>(null);
 const hasMore = ref(true);
+
+const openDetailModal = (report: any) => {
+  selectedReportDetail.value = report;
+  isDetailOpen.value = true;
+};
 
 const fetchReports = async (isLoadMore = false) => {
   if (loading.value && isLoadMore) return;
@@ -283,7 +290,13 @@ const handleSubmit = async () => {
                          Trạng thái: <span class="text-emerald-500">Đã gửi</span>
                       </div>
                    </div>
-                   <button class="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">Chi tiết</button>
+                    <button 
+                      @click="openDetailModal(report)"
+                      class="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                      :id="'btn-view-report-detail-' + report.id"
+                    >
+                      Chi tiết
+                    </button>
                 </div>
              </div>
           </div>
@@ -368,6 +381,100 @@ const handleSubmit = async () => {
              </div>
           </div>
        </div>
+    </div>
+
+    <!-- Report Detail Modal -->
+    <div v-if="isDetailOpen && selectedReportDetail" class="fixed inset-0 z-[110] flex items-center justify-center p-4" id="modal-report-detail">
+      <div @click="isDetailOpen = false; selectedReportDetail = null;" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
+      <div class="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl p-8 md:p-10 overflow-y-auto max-h-[90vh] animate-in zoom-in duration-300">
+        <button 
+          @click="isDetailOpen = false; selectedReportDetail = null;" 
+          class="absolute top-6 right-6 p-2 text-neutral-400 hover:text-neutral-700 bg-neutral-50 rounded-full hover:bg-neutral-100 transition-colors"
+          id="btn-close-detail-modal"
+        >
+          <X :size="16" />
+        </button>
+        
+        <div class="border-b border-neutral-100 pb-6 mb-6 text-center sm:text-left">
+          <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-3">
+            <span class="px-2.5 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[9px] font-black text-blue-600 uppercase tracking-wider">
+              {{ selectedReportDetail.type === 'DAILY' ? 'Hàng ngày' : selectedReportDetail.type === 'WEEKLY' ? 'Hàng tuần' : 'Hàng tháng' }}
+            </span>
+            <span class="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Ngày lập: {{ selectedReportDetail.report_date }}</span>
+          </div>
+          <h2 class="text-xl md:text-2xl font-black text-neutral-900 uppercase tracking-tight">Chi tiết báo cáo công việc</h2>
+          <p class="text-[11px] font-black text-blue-600 uppercase tracking-widest mt-1.5">{{ getProjectName(selectedReportDetail.project_id) }}</p>
+        </div>
+
+        <div class="space-y-6">
+          <!-- Metadata Info cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-neutral-50/50 p-5 rounded-2xl border border-neutral-100/50">
+            <div>
+              <span class="block text-[8px] font-black text-neutral-400 uppercase tracking-widest mb-1">Người lập báo cáo</span>
+              <p class="text-xs font-black text-neutral-800 uppercase">{{ getEmployeeName(selectedReportDetail.employee_id) }}</p>
+            </div>
+            <div>
+              <span class="block text-[8px] font-black text-neutral-400 uppercase tracking-widest mb-1">Dự án áp dụng</span>
+              <p class="text-xs font-black text-neutral-800 uppercase">{{ getProjectName(selectedReportDetail.project_id) }}</p>
+            </div>
+          </div>
+
+          <!-- Section: Tasks Summary -->
+          <div class="space-y-2">
+            <h4 class="text-[10px] font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2 border-b border-neutral-50 pb-2">
+              <ScrollText :size="14" class="text-blue-500" />
+              <span>Nội dung công việc đã làm</span>
+            </h4>
+            <div class="bg-blue-50/20 p-5 rounded-2xl border border-blue-100/30 text-xs font-bold text-neutral-700 leading-relaxed whitespace-pre-line">
+              {{ selectedReportDetail.tasks_summary || 'Không có mô tả chi tiết' }}
+            </div>
+          </div>
+
+          <!-- Section: Issues & Solutions -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <h4 class="text-[10px] font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2 border-b border-neutral-50 pb-2">
+                <AlertCircle :size="14" class="text-red-500" />
+                <span class="text-red-600">Khó khăn & Vấn đề</span>
+              </h4>
+              <div class="bg-red-50/30 p-5 rounded-2xl border border-red-100/20 text-xs font-bold text-neutral-700 leading-relaxed italic whitespace-pre-line">
+                {{ selectedReportDetail.issues || 'Không có ghi nhận khó khăn' }}
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <h4 class="text-[10px] font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2 border-b border-neutral-50 pb-2">
+                <CheckCircle2 :size="14" class="text-emerald-500" />
+                <span class="text-emerald-600">Giải pháp đề xuất</span>
+              </h4>
+              <div class="bg-emerald-50/30 p-5 rounded-2xl border border-emerald-100/20 text-xs font-bold text-neutral-700 leading-relaxed italic whitespace-pre-line">
+                {{ selectedReportDetail.resolutions || 'Không có ghi nhận giải pháp' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Next tasks -->
+          <div class="space-y-2">
+            <h4 class="text-[10px] font-black text-neutral-400 uppercase tracking-widest flex items-center gap-2 border-b border-neutral-50 pb-2">
+              <TrendingUp :size="14" class="text-neutral-500" />
+              <span>Kế hoạch kỳ tiếp theo</span>
+            </h4>
+            <div class="bg-neutral-50 p-5 rounded-2xl border border-neutral-100 text-xs font-bold text-neutral-700 leading-relaxed whitespace-pre-line">
+              {{ selectedReportDetail.next_tasks || 'Đang cập nhật kế hoạch thi công...' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 pt-4 border-t border-neutral-100 flex justify-end">
+          <button 
+            @click="isDetailOpen = false; selectedReportDetail = null;"
+            class="px-6 py-3 bg-neutral-900 hover:bg-neutral-800 text-white font-black rounded-xl uppercase tracking-widest text-[10px] shadow-md transition-all active:scale-95"
+            id="btn-close-detail-modal-footer"
+          >
+            Đóng cửa sổ
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

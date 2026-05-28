@@ -251,7 +251,7 @@ const handleDelete = async (material: any) => {
       <div>
         <div class="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-widest mb-1.5">
           <Sparkles :size="14" />
-          <span>Hầm mỏ & Vật liệu xây dựng</span>
+          <span>Vật liệu xây dựng</span>
         </div>
         <h1 class="text-3xl md:text-5xl font-black text-neutral-900 tracking-tight leading-none uppercase">
           NHẬP VẬT TƯ

@@ -31,7 +31,7 @@ const handleLogin = async () => {
           <LogIn :size="32" />
         </div>
       </div>
-      <h1 class="text-2xl font-bold text-neutral-900 mb-2">ProForeman</h1>
+      <h1 class="text-2xl font-bold text-neutral-900 mb-2">BẠCH ĐẰNG INVEST</h1>
       <p class="text-neutral-500 mb-8">Quản lý dự án xây dựng chuyên nghiệp</p>
 
       <div v-if="error" class="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg text-sm">

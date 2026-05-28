@@ -80,9 +80,9 @@ onMounted(() => {
         <div class="h-16 flex items-center px-6 border-b border-neutral-100">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-              <span class="font-bold">P</span>
+              <span class="font-bold">BDI</span>
             </div>
-            <span class="font-bold text-xl text-neutral-900">ProForeman</span>
+            <span>BẠCH ĐẰNG INVEST</span>
           </div>
           <button @click="isSidebarOpen = false" class="lg:hidden ml-auto p-2 text-neutral-400">
             <X :size="20" />
