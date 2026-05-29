@@ -95,7 +95,7 @@ const remove = async (role: any) => {
 
     <div v-if="isModalOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div @click="isModalOpen = false; editingRole = null; form = { name: '', code: '' };" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
-      <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-10 animate-in zoom-in duration-300">
+      <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl max-h-[90vh] overflow-y-auto p-10 animate-in zoom-in duration-300">
         <h2 class="text-2xl font-black text-neutral-900 uppercase mb-8 border-b border-neutral-100 pb-4 text-center">{{ editingRole ? 'Sửa' : 'Thêm' }} Chức danh</h2>
         <div class="space-y-4">
            <div>

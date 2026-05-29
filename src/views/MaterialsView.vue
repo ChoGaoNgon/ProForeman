@@ -13,7 +13,8 @@ import {
   Layers, 
   DollarSign, 
   Sparkles,
-  Info
+  Info,
+  AlertTriangle
 } from 'lucide-vue-next';
 
 const appStore = useAppStore();
@@ -59,6 +60,20 @@ const initialFormState = {
 };
 
 const form = reactive({ ...initialFormState });
+
+// Selected standard material item link
+const selectedMaterialItemId = ref('');
+
+const handleMaterialItemChange = () => {
+  const item = appStore.material_items.find((mi: any) => mi.id === selectedMaterialItemId.value);
+  if (item) {
+    form.material_name = item.name;
+    form.unit = item.default_unit || 'kg';
+    if (item.default_unit_price) {
+      form.unit_price = item.default_unit_price;
+    }
+  }
+};
 
 // Suggestions logic
 const isSuggestionsOpen = ref(false);
@@ -176,6 +191,7 @@ onMounted(async () => {
 const openAddModal = () => {
   modalMode.value = 'CREATE';
   Object.assign(form, initialFormState);
+  selectedMaterialItemId.value = '';
   // Default first project if available
   const availableProjects = appStore.visibleProjects;
   if (availableProjects.length > 0) {
@@ -197,6 +213,11 @@ const openEditModal = (material: any) => {
     origin: material.origin || '',
     supplier_id: material.supplier_id || '',
   });
+  
+  // Link to standard item if match exists
+  const matched = appStore.material_items.find((item: any) => item.name === material.material_name);
+  selectedMaterialItemId.value = matched ? matched.id : '';
+  
   isModalOpen.value = true;
 };
 
@@ -242,6 +263,69 @@ const handleDelete = async (material: any) => {
     }
   }
 };
+
+const getProjectNormForMaterial = (projectId: string, materialName: string) => {
+  if (!projectId || !materialName) return null;
+  const project = appStore.projects.find((p: any) => p.id === projectId);
+  if (!project || !project.material_norms) return null;
+  const nameLower = materialName.trim().toLowerCase();
+  const norm = project.material_norms.find((n: any) => 
+    (n.material_name || '').trim().toLowerCase() === nameLower
+  );
+  return norm || null;
+};
+
+const getMaterialCumulativeQuantity = (projectId: string, materialName: string, excludeMaterialId?: string) => {
+  if (!projectId || !materialName) return 0;
+  const nameLower = materialName.trim().toLowerCase();
+  return appStore.materials
+    .filter((m: any) => 
+      m.project_id === projectId && 
+      m.is_deleted !== 1 && 
+      (m.material_name || '').trim().toLowerCase() === nameLower &&
+      (!excludeMaterialId || m.id !== excludeMaterialId)
+    )
+    .reduce((sum: number, m: any) => sum + (Number(m.quantity) || 0), 0);
+};
+
+const getMaterialImportLimitInfo = (item: any) => {
+  const norm = getProjectNormForMaterial(item.project_id, item.material_name);
+  if (!norm) return null;
+  const totalImported = getMaterialCumulativeQuantity(item.project_id, item.material_name);
+  const isExceeded = totalImported > (norm.max_quantity || 0);
+  return {
+    normQuantity: norm.max_quantity || 0,
+    totalImported,
+    unit: norm.unit || item.unit,
+    isExceeded
+  };
+};
+
+const modalLimitInfo = computed(() => {
+  if (!form.project_id || !form.material_name) return null;
+  const norm = getProjectNormForMaterial(form.project_id, form.material_name);
+  if (!norm) return null;
+  
+  const alreadyImported = getMaterialCumulativeQuantity(
+    form.project_id, 
+    form.material_name, 
+    modalMode.value === 'UPDATE' ? form.id : undefined
+  );
+  
+  const currentInput = Number(form.quantity) || 0;
+  const projectedTotal = alreadyImported + currentInput;
+  const maxLimit = norm.max_quantity || 0;
+  const isExceeded = projectedTotal > maxLimit;
+  
+  return {
+    normQuantity: maxLimit,
+    alreadyImported,
+    projectedTotal,
+    currentInput,
+    unit: norm.unit || form.unit,
+    isExceeded
+  };
+});
 </script>
 
 <template>
@@ -338,15 +422,15 @@ const handleDelete = async (material: any) => {
         <table class="w-full border-collapse text-left">
           <thead>
             <tr class="border-b border-neutral-100">
-              <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Ngày nhập</th>
-              <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Dự án</th>
-              <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Vật tư</th>
-              <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Nguồn gốc</th>
-              <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Đơn vị</th>
-              <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">Số lượng</th>
-              <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">Đơn giá (VNĐ)</th>
-              <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">Thành tiền (VNĐ)</th>
-              <th class="px-8 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-center">Thao tác</th>
+              <th class="px-5 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Ngày nhập</th>
+              <th class="px-5 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Dự án</th>
+              <th class="px-6 py-5 text-[11px] font-black text-neutral-900 uppercase tracking-widest min-w-[280px]">Vật tư</th>
+              <th class="px-3 py-5 text-[9px] font-black text-neutral-400 uppercase tracking-widest">Nguồn gốc</th>
+              <th class="px-3 py-5 text-[9px] font-black text-neutral-400 uppercase tracking-widest text-center">Đơn vị</th>
+              <th class="px-3 py-5 text-[9px] font-black text-neutral-400 uppercase tracking-widest text-right">Số lượng</th>
+              <th class="px-4 py-5 text-[9px] font-black text-neutral-400 uppercase tracking-widest text-right">Đơn giá (VNĐ)</th>
+              <th class="px-4 py-5 text-[9px] font-black text-neutral-400 uppercase tracking-widest text-right">Thành tiền (VNĐ)</th>
+              <th class="px-5 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-center">Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -361,55 +445,60 @@ const handleDelete = async (material: any) => {
               </td>
             </tr>
             <tr v-for="item in paginatedMaterials" :key="item.id" class="group hover:bg-neutral-50/50 transition-colors border-b border-neutral-50 last:border-0">
-              <td class="px-8 py-5 font-bold text-xs text-neutral-500 whitespace-nowrap">
+              <td class="px-5 py-4 font-bold text-xs text-neutral-500 whitespace-nowrap">
                 <div class="flex items-center gap-2">
                   <Calendar :size="14" class="text-neutral-300" />
                   {{ formatDate(item.date) }}
                 </div>
               </td>
-              <td class="px-8 py-5">
-                <span class="text-xs font-black text-neutral-900 uppercase block max-w-xs truncate">
+              <td class="px-5 py-4">
+                <span class="text-xs font-black text-neutral-900 uppercase block max-w-[120px] truncate" :title="getProjectName(item.project_id)">
                   {{ getProjectName(item.project_id) }}
                 </span>
               </td>
-              <td class="px-8 py-5">
-                <span class="text-sm font-extrabold text-neutral-900 block">
+              <td class="px-6 py-4">
+                <span class="text-base font-black text-neutral-950 block leading-tight">
                   {{ item.material_name }}
                 </span>
+                <!-- Warning badge if total exceeding project norm -->
+                <div v-if="getMaterialImportLimitInfo(item)?.isExceeded" class="mt-1 inline-flex items-center gap-1 text-[9px] text-amber-700 bg-amber-50 border border-amber-250/60 px-2 py-0.5 rounded-lg font-black uppercase tracking-wider leading-none">
+                  <AlertTriangle :size="10" class="text-amber-500 shrink-0" />
+                  <span>Vượt định mức (Tổng: {{ getMaterialImportLimitInfo(item)?.totalImported }} / Định mức: {{ getMaterialImportLimitInfo(item)?.normQuantity }} {{ getMaterialImportLimitInfo(item)?.unit }})</span>
+                </div>
               </td>
-              <td class="px-8 py-5">
-                <span class="px-3 py-1 bg-neutral-100 border border-neutral-200 rounded-lg text-[10px] font-black text-neutral-600 uppercase tracking-widest block max-w-[150px] truncate" v-if="item.origin" :title="item.origin">
+              <td class="px-3 py-4">
+                <span class="px-2 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-[9px] font-bold text-neutral-500 uppercase tracking-widest block max-w-[110px] truncate" v-if="item.origin" :title="item.origin">
                   {{ item.origin }}
                 </span>
-                <span class="text-neutral-300 italic text-xs font-bold" v-else>Không rõ</span>
+                <span class="text-neutral-300 italic text-[9px] font-bold" v-else>Không rõ</span>
               </td>
-              <td class="px-8 py-5 font-bold text-xs text-neutral-400 whitespace-nowrap uppercase">
+              <td class="px-3 py-4 font-bold text-[10px] text-neutral-400 text-center whitespace-nowrap uppercase">
                 {{ item.unit }}
               </td>
-              <td class="px-8 py-5 text-right font-black text-neutral-900 whitespace-nowrap">
+              <td class="px-3 py-4 text-right font-black text-neutral-800 text-xs whitespace-nowrap">
                 {{ item.quantity }}
               </td>
-              <td class="px-8 py-5 text-right font-bold text-neutral-500 whitespace-nowrap">
+              <td class="px-4 py-4 text-right font-bold text-neutral-400 text-[10px] whitespace-nowrap">
                 {{ formatCurrency(item.unit_price) }}
               </td>
-              <td class="px-8 py-5 text-right font-black text-blue-600 whitespace-nowrap text-sm">
+              <td class="px-4 py-4 text-right font-black text-blue-600 text-xs whitespace-nowrap">
                 {{ formatCurrency((item.quantity || 0) * (item.unit_price || 0)) }}
               </td>
-              <td class="px-8 py-5 whitespace-nowrap">
-                <div class="flex justify-center gap-2">
+              <td class="px-5 py-4 whitespace-nowrap">
+                <div class="flex justify-center gap-1.5">
                   <button 
                     @click="openEditModal(item)"
-                    class="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                    class="p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                     title="Chỉnh sửa"
                   >
-                    <Edit2 :size="14" />
+                    <Edit2 :size="13" />
                   </button>
                   <button 
                     @click="handleDelete(item)"
-                    class="p-2 text-neutral-400 hover:text-red-650 hover:bg-red-50 rounded-xl transition-all"
+                    class="p-1.5 text-neutral-400 hover:text-red-650 hover:bg-red-50 rounded-xl transition-all"
                     title="Xóa bỏ"
                   >
-                    <Trash2 :size="14" />
+                    <Trash2 :size="13" />
                   </button>
                 </div>
               </td>
@@ -451,7 +540,7 @@ const handleDelete = async (material: any) => {
     <div v-if="isModalOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div @click="isModalOpen = false" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
       
-      <div class="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden p-10 lg:p-12 animate-in zoom-in duration-300">
+      <div class="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl max-h-[90vh] overflow-y-auto p-10 lg:p-12 animate-in zoom-in duration-300">
         <button @click="isModalOpen = false" class="absolute top-8 right-8 p-1.5 hover:bg-neutral-200 rounded-full transition-colors z-10">
           <X :size="20" class="text-neutral-400" />
         </button>
@@ -484,14 +573,43 @@ const handleDelete = async (material: any) => {
 
             <!-- Tên vật tư nhập -->
             <div>
-              <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Tên vật tư</label>
-              <input 
-                v-model="form.material_name"
-                required
-                type="text" 
-                placeholder="Ví dụ: Cát vàng sông Hồng, Xi măng Holcim PC40, Thép Việt Úc..."
-                class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-2xl font-extrabold outline-none focus:border-blue-500 transition-all"
-              />
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest">Chọn vật tư định mức *</label>
+                <router-link 
+                  v-if="appStore.material_items.length === 0"
+                  to="/material-items"
+                  class="text-[10px] font-bold text-blue-600 hover:underline uppercase tracking-wide flex items-center gap-1"
+                >
+                  <Layers :size="10" />
+                  Thiết lập danh mục ngay
+                </router-link>
+              </div>
+              
+              <!-- When standard item dictionary is populated -->
+              <div class="relative" v-if="appStore.material_items.length > 0">
+                <select 
+                  v-model="selectedMaterialItemId"
+                  @change="handleMaterialItemChange"
+                  required
+                  class="w-full h-14 pl-4 pr-10 bg-neutral-50 border border-neutral-100 rounded-2xl font-extrabold outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer text-sm text-neutral-800"
+                >
+                  <option value="" disabled>-- Vui lòng chọn vật tư quy chuẩn --</option>
+                  <option v-for="item in appStore.material_items" :key="item.id" :value="item.id">
+                    {{ item.name }} {{ item.code ? `[${item.code}]` : '' }} - ĐVT mặc định: {{ item.default_unit }}
+                  </option>
+                </select>
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400">▼</span>
+              </div>
+              
+              <!-- Warning when dictionary is empty -->
+              <div v-else class="p-4 bg-amber-50 rounded-2xl border border-amber-150 flex items-start gap-2.5 text-xs font-semibold text-amber-700 leading-relaxed">
+                <Info :size="14" class="shrink-0 mt-0.5 text-amber-500" />
+                <div>
+                  Hiện chưa có danh mục vật tư chuẩn nào. Vui lòng truy cập 
+                  <router-link to="/material-items" class="text-blue-600 font-extrabold hover:underline">Danh mục vật tư</router-link> 
+                  để khởi tạo trước để có thể thao tác nhập vật tư chuẩn xác.
+                </div>
+              </div>
             </div>
 
             <!-- Nguồn gốc vật tư -->
@@ -577,6 +695,22 @@ const handleDelete = async (material: any) => {
                   type="number" 
                   class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-2xl font-black outline-none focus:border-blue-500 transition-all text-neutral-900" 
                 />
+                
+                <!-- Live quantity limit status -->
+                <div v-if="modalLimitInfo" class="mt-2 text-[10px] leading-relaxed font-bold">
+                  <div v-if="modalLimitInfo.isExceeded" class="text-amber-700 bg-amber-50 border border-amber-250/60 p-2.5 rounded-xl flex items-start gap-1.5 shadow-sm">
+                    <AlertTriangle :size="12" class="text-amber-500 shrink-0 mt-0.5 animate-pulse" />
+                    <div>
+                      <span>Cảnh báo vượt định mức: Tổng nhập mới sẽ là </span>
+                      <span class="font-extrabold text-red-650">{{ modalLimitInfo.projectedTotal }}</span>
+                      <span> / định mức {{ modalLimitInfo.normQuantity }} {{ modalLimitInfo.unit }} (Đã nhập: {{ modalLimitInfo.alreadyImported }}).</span>
+                    </div>
+                  </div>
+                  <div v-else class="text-emerald-700 bg-emerald-50/50 border border-emerald-100 p-2.5 rounded-xl flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Định mức tối đa {{ modalLimitInfo.normQuantity }} {{ modalLimitInfo.unit }} (Đã nhập {{ modalLimitInfo.alreadyImported }} còn lại {{ modalLimitInfo.normQuantity - modalLimitInfo.alreadyImported }})</span>
+                  </div>
+                </div>
               </div>
 
               <!-- Đơn giá -->
@@ -601,6 +735,15 @@ const handleDelete = async (material: any) => {
               <span class="text-lg font-black text-blue-600">
                 {{ formatCurrency(formTotalAmount) }}
               </span>
+            </div>
+
+            <!-- Warning block if exceeded -->
+            <div v-if="modalLimitInfo && modalLimitInfo.isExceeded" class="p-4 bg-red-50/80 border border-red-200/60 rounded-2xl flex items-start gap-3">
+              <AlertTriangle :size="18" class="text-red-500 shrink-0 mt-0.5" />
+              <div class="text-xs text-red-700 leading-relaxed font-bold">
+                <p class="font-extrabold uppercase tracking-wide text-red-800 mb-0.5">Xác nhận vượt hạn mức định mức</p>
+                Tổng số lượng lũy kế sau đợt nhập này sẽ vượt quá định mức vật tư tối đa quy định của dự án. Vui lòng kiểm tra lại.
+              </div>
             </div>
 
             <div class="pt-4 border-t border-neutral-100 flex items-center justify-end gap-3">

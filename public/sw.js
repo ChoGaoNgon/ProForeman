@@ -39,6 +39,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip dev environment requests entirely to prevent caching dynamic ES modules during development
+  if (
+    event.request.url.includes('/src/') ||
+    event.request.url.includes('/node_modules/') ||
+    event.request.url.includes('@vite') ||
+    event.request.url.includes('@fs') ||
+    event.request.url.includes('@id') ||
+    event.request.url.includes('?import') ||
+    event.request.url.includes('?v=') ||
+    event.request.url.includes('.vue') ||
+    event.request.url.includes('.ts') ||
+    event.request.url.includes('HMR')
+  ) {
+    return;
+  }
+
   // Skip Firebase requests or calendar external APIs
   if (event.request.url.includes('/api/') || event.request.url.includes('googleapis.com') || event.request.url.includes('firebase')) {
     return;
