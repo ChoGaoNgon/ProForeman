@@ -24,7 +24,8 @@ import {
   Calendar,
   Download,
   Smartphone,
-  Info
+  Info,
+  Layers
 } from 'lucide-vue-next';
 import { usePWAStore } from '@/stores/pwa';
 
@@ -53,7 +54,8 @@ const navItems = computed(() => {
   items.push({ name: 'projects', label: 'Dự án', icon: Briefcase });
   items.push({ name: 'reports', label: 'Báo cáo', icon: ClipboardList });
   items.push({ name: 'calendar', label: 'Lịch làm việc', icon: Calendar });
-  items.push({ name: 'materials', label: 'Vật tư', icon: Package });
+  items.push({ name: 'materials', label: 'Nhập vật tư', icon: Package });
+  items.push({ name: 'material-items', label: 'Danh mục vật tư', icon: Layers });
   items.push({ name: 'suppliers', label: 'Nhà cung cấp', icon: Truck });
   
   if (appStore.hasAnyPaymentAccess) {

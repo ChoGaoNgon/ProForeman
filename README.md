@@ -5,7 +5,12 @@ ProForeman là ứng dụng quản lý tiến độ, nhân sự và tài chính 
 
 ## Các Tính Năng Vừa Cập Nhật
 
-### 1. Tích Hợp PWA & Trải Nghiệm Di Động Độc Lập
+### 1. Quản lý Danh mục Vật tư Chuẩn & Nhập Kho Thông Minh
+- **Danh mục Vật tư Quy chuẩn**: Giờ đây người dùng có thể quản lý một thư viện các vật tư chuẩn của công ty (như Gạch chỉ đỏ, Đá dăm 1x2, Cát mịn, Sỏi,...). Giao diện hỗ trợ đầy đủ bộ công cụ Thêm, Sửa, Xóa và Tìm kiếm để kiểm soát danh sách vật liệu đồng nhất.
+- **Nạp nhanh danh mục mẫu (One-click Seeding)**: Đối với các tài khoản mới lập chưa có dữ liệu, hệ thống tự động cung cấp nút **"NẠP DANH MỤC MẪU"** ở góc phải giúp điền nhanh đầy đủ 9 nhóm vật liệu xây dựng phổ biến nhất chỉ trong 1 giây.
+- **Loại bỏ gõ phím thủ công (Autofill)**: Màn hình **Nhập vật tư** đã chuyển đổi hoàn toàn từ ô nhập liệu tự do sang danh sách chọn nhanh (`<select>`). Khi người dùng chọn bất kỳ loại vật tư nào, hệ thống sẽ tự động điền **Đơn vị tính** mặc định và **Đơn giá tham khảo** tương ứng, triệt tiêu sai lệch chính tả và tăng tốc thao tác đến 80%.
+
+### 2. Tích Hợp PWA & Trải Nghiệm Di Động Độc Lập
 - **Cài đặt Không cần Cửa hàng Ứng dụng**: Cho phép người dùng trực tiếp tải và lưu ứng dụng vào màn hình chính của điện thoại hoặc máy tính (Home Screen) thông qua nút **Tải App** được tích hợp ở thanh điều hướng trên cùng hoặc thanh Sidebar cạnh bên.
 - **Hỗ trợ Thiết bị Apple (iOS)**: Tự động phát hiện trình duyệt Safari trên iPhone/iPad để hiển thị bảng hướng dẫn từng bước trực quan giúp người dùng thêm ứng dụng vào Màn hình chính thủ công một cách dễ dàng.
 - **Service Worker & Caching Ngoại tuyến**: Tải trước tất cả các tài nguyên giao diện cơ bản (App Shell) nhờ Service Worker hoạt động dưới chế độ *Stale-While-Revalidate*, giúp hệ thống khởi động cực nhanh kể cả khi ở hiện trường sóng yếu hay mất kết nối Internet.

@@ -156,6 +156,20 @@
       },
       "required": ["name", "code"]
     },
+    "MaterialItem": {
+      "title": "Danh mục vật tư",
+      "description": "Danh mục các loại vật tư định mức như Gạch, Đá, Cùt, Thép...",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "default_unit": { "type": "string" },
+        "default_unit_price": { "type": "number" },
+        "is_deleted": { "type": "number" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["name"]
+    },
     "SystemConfig": {
       "title": "Cấu hình hệ thống",
       "description": "Cấu hình bot telegram và các tham số hệ thống",
@@ -181,6 +195,7 @@
     "reports": { "schema": "Report", "description": "Field reports" },
     "materials": { "schema": "Material", "description": "Materials records per project" },
     "suppliers": { "schema": "Supplier", "description": "Material suppliers dictionary" },
+    "material_items": { "schema": "MaterialItem", "description": "Global list of physical items such as bricks, stones, etc." },
     "system_configs": { "schema": "SystemConfig", "description": "System configs and parameters" }
   }
 }

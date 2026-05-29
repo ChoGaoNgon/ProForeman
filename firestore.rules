@@ -160,6 +160,12 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    // Material Items
+    match /material_items/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
     // System Configs
     match /system_configs/{configId} {
       allow read: if isSignedIn();

@@ -60,6 +60,20 @@ const initialFormState = {
 
 const form = reactive({ ...initialFormState });
 
+// Selected standard material item link
+const selectedMaterialItemId = ref('');
+
+const handleMaterialItemChange = () => {
+  const item = appStore.material_items.find((mi: any) => mi.id === selectedMaterialItemId.value);
+  if (item) {
+    form.material_name = item.name;
+    form.unit = item.default_unit || 'kg';
+    if (item.default_unit_price) {
+      form.unit_price = item.default_unit_price;
+    }
+  }
+};
+
 // Suggestions logic
 const isSuggestionsOpen = ref(false);
 
@@ -176,6 +190,7 @@ onMounted(async () => {
 const openAddModal = () => {
   modalMode.value = 'CREATE';
   Object.assign(form, initialFormState);
+  selectedMaterialItemId.value = '';
   // Default first project if available
   const availableProjects = appStore.visibleProjects;
   if (availableProjects.length > 0) {
@@ -197,6 +212,11 @@ const openEditModal = (material: any) => {
     origin: material.origin || '',
     supplier_id: material.supplier_id || '',
   });
+  
+  // Link to standard item if match exists
+  const matched = appStore.material_items.find((item: any) => item.name === material.material_name);
+  selectedMaterialItemId.value = matched ? matched.id : '';
+  
   isModalOpen.value = true;
 };
 
@@ -484,14 +504,43 @@ const handleDelete = async (material: any) => {
 
             <!-- Tên vật tư nhập -->
             <div>
-              <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Tên vật tư</label>
-              <input 
-                v-model="form.material_name"
-                required
-                type="text" 
-                placeholder="Ví dụ: Cát vàng sông Hồng, Xi măng Holcim PC40, Thép Việt Úc..."
-                class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-2xl font-extrabold outline-none focus:border-blue-500 transition-all"
-              />
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest">Chọn vật tư định mức *</label>
+                <router-link 
+                  v-if="appStore.material_items.length === 0"
+                  to="/material-items"
+                  class="text-[10px] font-bold text-blue-600 hover:underline uppercase tracking-wide flex items-center gap-1"
+                >
+                  <Layers :size="10" />
+                  Thiết lập danh mục ngay
+                </router-link>
+              </div>
+              
+              <!-- When standard item dictionary is populated -->
+              <div class="relative" v-if="appStore.material_items.length > 0">
+                <select 
+                  v-model="selectedMaterialItemId"
+                  @change="handleMaterialItemChange"
+                  required
+                  class="w-full h-14 pl-4 pr-10 bg-neutral-50 border border-neutral-100 rounded-2xl font-extrabold outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer text-sm text-neutral-800"
+                >
+                  <option value="" disabled>-- Vui lòng chọn vật tư quy chuẩn --</option>
+                  <option v-for="item in appStore.material_items" :key="item.id" :value="item.id">
+                    {{ item.name }} {{ item.code ? `[${item.code}]` : '' }} - ĐVT mặc định: {{ item.default_unit }}
+                  </option>
+                </select>
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400">▼</span>
+              </div>
+              
+              <!-- Warning when dictionary is empty -->
+              <div v-else class="p-4 bg-amber-50 rounded-2xl border border-amber-150 flex items-start gap-2.5 text-xs font-semibold text-amber-700 leading-relaxed">
+                <Info :size="14" class="shrink-0 mt-0.5 text-amber-500" />
+                <div>
+                  Hiện chưa có danh mục vật tư chuẩn nào. Vui lòng truy cập 
+                  <router-link to="/material-items" class="text-blue-600 font-extrabold hover:underline">Danh mục vật tư</router-link> 
+                  để khởi tạo trước để có thể thao tác nhập vật tư chuẩn xác.
+                </div>
+              </div>
             </div>
 
             <!-- Nguồn gốc vật tư -->
