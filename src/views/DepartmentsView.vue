@@ -89,7 +89,7 @@ const remove = async (id: string) => {
 
     <div v-if="isModalOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div @click="isModalOpen = false; editingDept = null; name = '';" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
-      <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-300">
+      <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto p-8 animate-in zoom-in duration-300">
         <h2 class="text-xl font-black text-neutral-900 uppercase mb-6">{{ editingDept ? 'Sửa' : 'Thêm' }} Phòng ban</h2>
         <input v-model="name" type="text" placeholder="Tên phòng ban..." class="w-full h-12 px-4 bg-neutral-50 border border-neutral-100 rounded-xl font-bold mb-6 outline-none focus:border-blue-500" />
         <button 

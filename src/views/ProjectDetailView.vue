@@ -551,6 +551,61 @@ const handleDeleteProject = async () => {
             </table>
           </div>
         </div>
+
+        <!-- Material Norms Panel -->
+        <div class="bg-white rounded-[2rem] border border-neutral-100 shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+            <h2 class="text-[10px] font-black text-neutral-900 uppercase tracking-widest flex items-center gap-2">
+              <ScrollText :size="14" class="text-blue-600 animate-pulse" />
+               Định mức vật tư công trình
+            </h2>
+            <div v-if="project.material_norms && project.material_norms.length" class="px-2.5 py-1 bg-neutral-100 text-[10px] font-black uppercase tracking-wider rounded-lg text-neutral-600">
+               {{ project.material_norms.length }} hạng mục
+            </div>
+          </div>
+          
+          <div v-if="!(project.material_norms && project.material_norms.length)" class="p-8 text-center text-neutral-400">
+             <ScrollText :size="32" class="mx-auto mb-3 opacity-20" />
+             <p class="italic text-[11px] font-bold">Dự án này chưa định nghĩa định mức vật tư tiêu hao.</p>
+             <button 
+               v-if="isManagement"
+               @click="showEditModal = true"
+               class="mt-3 px-4 py-1.5 bg-neutral-900 text-white text-[9px] font-black uppercase rounded-lg tracking-wider hover:bg-neutral-800 transition-all inline-flex items-center gap-1 cursor-pointer"
+             >
+               <Edit2 :size="10" />
+               Thiết lập định mức ngay
+             </button>
+          </div>
+          
+          <div v-else class="overflow-x-auto">
+            <table class="w-full text-left font-bold text-[11px]">
+              <thead>
+                <tr class="bg-neutral-50 text-[9px] font-black text-neutral-400 uppercase tracking-widest">
+                  <th class="px-6 py-3">STT</th>
+                  <th class="px-6 py-3">Mã vật tư</th>
+                  <th class="px-6 py-3">Tên vật tư quy chuẩn</th>
+                  <th class="px-6 py-3 text-center">Đơn vị</th>
+                  <th class="px-6 py-3 text-right text-emerald-600">Khối lượng tối đa (MAX)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-neutral-50">
+                <tr v-for="(norm, idx) in project.material_norms" :key="idx" class="hover:bg-neutral-50/50 transition-colors">
+                  <td class="px-6 py-3.5">{{ idx + 1 }}</td>
+                  <td class="px-6 py-3.5">
+                    <span class="px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded text-[9px] font-black uppercase">
+                      {{ norm.code || 'N/A' }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-3.5 text-neutral-800 text-xs">{{ norm.material_name }}</td>
+                  <td class="px-6 py-3.5 text-center uppercase text-neutral-500">{{ norm.unit || 'kg' }}</td>
+                  <td class="px-6 py-3.5 text-right font-black text-emerald-600 text-xs">
+                    {{ new Intl.NumberFormat('vi-VN').format(norm.max_quantity || 0) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- Right Column -->
@@ -699,7 +754,7 @@ const handleDeleteProject = async () => {
     <!-- Assign Modal -->
     <div v-if="showAssignModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div @click="showAssignModal = false" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
-      <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-10 animate-in zoom-in duration-300">
+      <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl max-h-[90vh] overflow-y-auto p-10 animate-in zoom-in duration-300">
         <h2 class="text-2xl font-black text-neutral-900 uppercase mb-2 text-center tracking-tighter">Phân bổ nhân sự</h2>
         <p class="text-xs font-bold text-neutral-400 text-center mb-8 uppercase tracking-widest">Gán thành viên vào đội ngũ dự án</p>
         
@@ -745,7 +800,7 @@ const handleDeleteProject = async () => {
     <!-- Delete Confirmation Modal -->
     <div v-if="showDeleteConfirm" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <div @click="showDeleteConfirm = false" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
-      <div class="relative w-full max-w-sm bg-white rounded-[2rem] shadow-2xl p-8 animate-in zoom-in duration-300">
+      <div class="relative w-full max-w-sm bg-white rounded-[2rem] shadow-2xl max-h-[90vh] overflow-y-auto p-8 animate-in zoom-in duration-300">
         <div class="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
           <AlertTriangle :size="32" />
         </div>

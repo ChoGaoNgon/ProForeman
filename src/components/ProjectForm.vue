@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useAppStore } from '@/stores/app';
-import { X, Plus, Calendar, MinusCircle, Check, Link, FileText } from 'lucide-vue-next';
+import { useAuthStore } from '@/stores/auth';
+import { X, Plus, Calendar, MinusCircle, Check, Link, FileText, Layers, Info } from 'lucide-vue-next';
 
 const props = defineProps({
   project: {
@@ -25,12 +26,25 @@ const form = reactive({
   contract_file_url: '',
   start_date: new Date().toISOString().split('T')[0],
   recovery_deadline_ratio: 80, // Default 80%
-  payment_plan: [] as any[]
+  payment_plan: [] as any[],
+  material_norms: [] as any[]
 });
 
-onMounted(() => {
+onMounted(async () => {
+  if (appStore.material_items.length === 0) {
+    try {
+      await appStore.refreshAll();
+    } catch (err) {
+      console.error('Failed to pre-fetch material items for project norms:', err);
+    }
+  }
   if (props.project) {
     Object.assign(form, props.project);
+    if (!form.material_norms) {
+      form.material_norms = [];
+    }
+  } else {
+    form.material_norms = [];
   }
 });
 
@@ -60,14 +74,42 @@ const removePaymentMilestone = (index: number) => {
   form.payment_plan.splice(index, 1);
 };
 
+const addMaterialNorm = () => {
+  form.material_norms.push({
+    material_item_id: '',
+    material_name: '',
+    code: '',
+    unit: 'kg',
+    max_quantity: 0
+  });
+};
+
+const removeMaterialNorm = (index: number) => {
+  form.material_norms.splice(index, 1);
+};
+
+const handleMaterialNormChange = (index: number) => {
+  const norm = form.material_norms[index];
+  const item = appStore.material_items.find((mi: any) => mi.id === norm.material_item_id);
+  if (item) {
+    norm.material_name = item.name;
+    norm.code = item.code || '';
+    norm.unit = item.default_unit || 'kg';
+  }
+};
+
 const handleSubmit = async () => {
   if (!form.name || form.contract_value <= 0 || loading.value) return;
   
   loading.value = true;
   try {
     const action = props.project ? 'UPDATE' : 'CREATE';
+    // Clean up material norms with no selection before submit
+    const cleanedNorms = (form.material_norms || []).filter((norm: any) => norm.material_item_id);
+    
     await appStore.saveEntity('projects', action, {
       ...form,
+      material_norms: cleanedNorms,
       advance_amount: form.advance_amount || calculatedAdvance.value,
       status: props.project?.status || 'ACTIVE',
       status_evaluation: props.project?.status_evaluation || props.project?.risk_status || 'SAFE',
@@ -89,9 +131,9 @@ const handleSubmit = async () => {
   <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div @click="$emit('close')" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
     
-    <div class="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+    <div class="relative w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
       <!-- Header -->
-      <div class="px-8 py-6 border-b border-neutral-100 flex items-center justify-between">
+      <div class="px-8 py-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
         <div>
           <h2 class="text-2xl font-black text-neutral-900 uppercase">{{ project ? 'Cập nhật dự án' : 'Khởi tạo dự án' }}</h2>
           <p class="text-sm text-neutral-500">{{ project ? 'Chỉnh sửa thông tin hợp đồng' : 'Thiết lập thông tin hợp đồng cơ sở' }}</p>
@@ -102,7 +144,7 @@ const handleSubmit = async () => {
       </div>
 
       <!-- Body -->
-      <div class="p-8 max-h-[70vh] overflow-y-auto space-y-6">
+      <div class="p-8 flex-1 overflow-y-auto space-y-6">
         <div>
           <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Tên dự án / Công trình</label>
           <input 
@@ -260,10 +302,97 @@ const handleSubmit = async () => {
               </div>
            </div>
         </div>
-      </div>
+
+         <!-- Material Norms (Định mức vật tư) -->
+         <div class="space-y-4 pt-6 border-t border-neutral-100">
+           <div class="flex items-center justify-between">
+             <div class="flex items-center gap-1.5 text-xs font-black text-neutral-900 uppercase tracking-widest">
+               <Layers :size="16" class="text-blue-600 animate-pulse" />
+               <span>Biên độ định mức vật tư dự kiến</span>
+             </div>
+             <button 
+               type="button"
+               @click="addMaterialNorm" 
+               class="text-[10px] font-black text-blue-605 hover:text-blue-700 uppercase flex items-center gap-1 cursor-pointer"
+             >
+               <Plus :size="12" />
+               <span>Thêm định mức vật tư</span>
+             </button>
+           </div>
+
+           <!-- Warning if empty standard items dictionary -->
+           <div v-if="appStore.material_items.length === 0" class="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-2.5 text-xs font-semibold text-amber-700 leading-relaxed">
+             <Info :size="14" class="shrink-0 mt-0.5 text-amber-500" />
+             <div>
+               Chưa có danh mục vật tư chuẩn nào. Vui lòng cập nhật hoặc nạp danh mục vật tư chuẩn tại trang 
+               <router-link to="/material-items" class="text-blue-600 font-extrabold hover:underline" @click="emit('close')">Danh mục vật tư</router-link> 
+               trước khi phân bổ định mức vật liệu cho công trình này.
+             </div>
+           </div>
+
+           <div v-else-if="form.material_norms && form.material_norms.length === 0" class="p-6 border border-dashed border-neutral-200 rounded-2xl text-center bg-neutral-50/20">
+             <p class="text-xs text-neutral-400 font-bold uppercase tracking-wider">Chưa định nghĩa định mức vật tư nào</p>
+             <p class="text-[10px] text-neutral-400 mt-1">Định mức vật tư giúp kiểm soát hạn mức khối lượng tối đa được phép xuất/nhập tại hiện trường</p>
+           </div>
+
+           <div v-for="(norm, index) in form.material_norms" :key="index" class="bg-neutral-50 p-4 rounded-xl border border-neutral-100 relative group transition-colors hover:border-neutral-200">
+             <button 
+               type="button"
+               @click="removeMaterialNorm(index)" 
+               class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md z-10"
+               title="Xoá định mức"
+             >
+               <MinusCircle :size="14" />
+             </button>
+             
+             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+               <!-- Select material item -->
+               <div class="md:col-span-6">
+                 <p class="text-[9px] font-black text-neutral-400 uppercase tracking-widest mb-1">Vật tư chuẩn hóa *</p>
+                 <select 
+                   v-model="norm.material_item_id"
+                   @change="handleMaterialNormChange(index)"
+                   required
+                   class="w-full h-10 px-3 bg-white border border-neutral-100 rounded-lg text-xs font-bold focus:border-blue-500 focus:outline-none appearance-none cursor-pointer text-neutral-800"
+                 >
+                   <option value="" disabled>-- Chọn vật tư --</option>
+                   <option v-for="mi in appStore.material_items" :key="mi.id" :value="mi.id">
+                     {{ mi.name }} {{ mi.code ? `[${mi.code}]` : '' }}
+                   </option>
+                 </select>
+               </div>
+
+               <!-- unit -->
+               <div class="md:col-span-3">
+                 <p class="text-[9px] font-black text-neutral-400 uppercase tracking-widest mb-1">ĐVT</p>
+                 <input 
+                   v-model="norm.unit" 
+                   type="text" 
+                   placeholder="ĐVT"
+                   required
+                   class="w-full h-10 px-3 bg-white border border-neutral-100 rounded-lg text-xs font-bold text-neutral-600 focus:outline-none focus:border-blue-500 uppercase"
+                 />
+               </div>
+
+               <!-- max quantity -->
+               <div class="md:col-span-3">
+                 <p class="text-[9px] font-black text-neutral-400 uppercase tracking-widest mb-1">Hạn mức MAX *</p>
+                 <input 
+                   v-model.number="norm.max_quantity" 
+                   type="number" 
+                   min="0"
+                   placeholder="Hạn mức"
+                   required
+                   class="w-full h-10 px-3 bg-white border border-neutral-100 rounded-lg text-xs font-black text-emerald-600 focus:outline-none focus:border-blue-500"
+                 />
+               </div>
+             </div>
+           </div>
+         </div>
+       </div>
 
       <!-- Footer -->
-      <div class="p-8 bg-neutral-50 border-t border-neutral-100">
+      <div class="p-8 bg-neutral-50 border-t border-neutral-100 shrink-0">
         <button 
           @click="handleSubmit"
           :disabled="loading"

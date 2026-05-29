@@ -219,7 +219,7 @@ const remove = async (config: any) => {
     <!-- Configuration Modal (Thêm/Sửa Cấu hình) -->
     <div v-if="isModalOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-4" id="modal-config">
       <div @click="isModalOpen = false; editingConfig = null;" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
-      <div class="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl p-10 animate-in zoom-in duration-300">
+      <div class="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl max-h-[90vh] overflow-y-auto p-10 animate-in zoom-in duration-300">
         <button 
           @click="isModalOpen = false; editingConfig = null;" 
           class="absolute top-6 right-6 p-2 text-neutral-400 hover:text-neutral-700 bg-neutral-50 rounded-full hover:bg-neutral-100 transition-colors"

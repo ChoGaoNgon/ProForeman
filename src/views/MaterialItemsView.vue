@@ -331,7 +331,7 @@ const handleSeedSamples = async () => {
     <div v-if="isModalOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div @click="isModalOpen = false" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
       
-      <div class="relative w-full max-w-xl bg-white rounded-[3rem] shadow-2xl overflow-hidden p-10 lg:p-12 animate-in zoom-in duration-300">
+      <div class="relative w-full max-w-xl bg-white rounded-[3rem] shadow-2xl max-h-[90vh] overflow-y-auto p-10 lg:p-12 animate-in zoom-in duration-300">
         <button @click="isModalOpen = false" class="absolute top-8 right-8 p-1.5 hover:bg-neutral-200 rounded-full transition-colors z-10 cursor-pointer">
           <X :size="20" class="text-neutral-400" />
         </button>

@@ -46,6 +46,7 @@
         "status_evaluation": { "type": "string", "enum": ["SAFE", "WARNING", "RISK"] },
         "evaluation_note": { "type": "string" },
         "payment_plan": { "type": "array" },
+        "material_norms": { "type": "array" },
         "evaluator_id": { "type": "string" },
         "evaluation_updated_at": { "type": "string", "format": "date-time" },
         "is_deleted": { "type": "boolean" },
