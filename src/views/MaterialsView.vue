@@ -14,7 +14,8 @@ import {
   DollarSign, 
   Sparkles,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-vue-next';
 
 const appStore = useAppStore();
@@ -24,6 +25,18 @@ const authStore = useAuthStore();
 const isModalOpen = ref(false);
 const modalMode = ref<'CREATE' | 'UPDATE'>('CREATE');
 const loading = ref(false);
+const isReloadingMaterials = ref(false);
+
+const handleReloadMaterials = async () => {
+  isReloadingMaterials.value = true;
+  try {
+    await appStore.forceReloadEntity('material_items');
+  } catch (err) {
+    console.error('Lỗi khi tải lại vật tư quy chuẩn từ database:', err);
+  } finally {
+    isReloadingMaterials.value = false;
+  }
+};
 
 // Filter drafts (bound to UI fields with v-model)
 const draftSearchQuery = ref('');
@@ -424,12 +437,12 @@ const modalLimitInfo = computed(() => {
             <tr class="border-b border-neutral-100">
               <th class="px-5 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Ngày nhập</th>
               <th class="px-5 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Dự án</th>
-              <th class="px-6 py-5 text-[11px] font-black text-neutral-900 uppercase tracking-widest min-w-[280px]">Vật tư</th>
-              <th class="px-3 py-5 text-[9px] font-black text-neutral-400 uppercase tracking-widest">Nguồn gốc</th>
-              <th class="px-3 py-5 text-[9px] font-black text-neutral-400 uppercase tracking-widest text-center">Đơn vị</th>
-              <th class="px-3 py-5 text-[9px] font-black text-neutral-400 uppercase tracking-widest text-right">Số lượng</th>
-              <th class="px-4 py-5 text-[9px] font-black text-neutral-400 uppercase tracking-widest text-right">Đơn giá (VNĐ)</th>
-              <th class="px-4 py-5 text-[9px] font-black text-neutral-400 uppercase tracking-widest text-right">Thành tiền (VNĐ)</th>
+              <th class="px-6 py-5 text-[12px] font-black text-neutral-900 uppercase tracking-widest min-w-[360px] w-5/12">Vật tư</th>
+              <th class="px-2 py-5 text-[8.5px] font-black text-neutral-400 uppercase tracking-widest w-24">Nguồn gốc</th>
+              <th class="px-2 py-5 text-[8.5px] font-black text-neutral-400 uppercase tracking-widest text-center w-16">ĐVT</th>
+              <th class="px-2 py-5 text-[8.5px] font-black text-neutral-400 uppercase tracking-widest text-right w-20">SL</th>
+              <th class="px-2 py-5 text-[8.5px] font-black text-neutral-400 uppercase tracking-widest text-right w-28">Đơn giá</th>
+              <th class="px-2 py-5 text-[8.5px] font-black text-neutral-400 uppercase tracking-widest text-right w-32">Thành tiền</th>
               <th class="px-5 py-5 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-center">Thao tác</th>
             </tr>
           </thead>
@@ -445,7 +458,7 @@ const modalLimitInfo = computed(() => {
               </td>
             </tr>
             <tr v-for="item in paginatedMaterials" :key="item.id" class="group hover:bg-neutral-50/50 transition-colors border-b border-neutral-50 last:border-0">
-              <td class="px-5 py-4 font-bold text-xs text-neutral-500 whitespace-nowrap">
+               <td class="px-5 py-4 font-bold text-xs text-neutral-500 whitespace-nowrap">
                 <div class="flex items-center gap-2">
                   <Calendar :size="14" class="text-neutral-300" />
                   {{ formatDate(item.date) }}
@@ -466,22 +479,22 @@ const modalLimitInfo = computed(() => {
                   <span>Vượt định mức (Tổng: {{ getMaterialImportLimitInfo(item)?.totalImported }} / Định mức: {{ getMaterialImportLimitInfo(item)?.normQuantity }} {{ getMaterialImportLimitInfo(item)?.unit }})</span>
                 </div>
               </td>
-              <td class="px-3 py-4">
-                <span class="px-2 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-[9px] font-bold text-neutral-500 uppercase tracking-widest block max-w-[110px] truncate" v-if="item.origin" :title="item.origin">
+              <td class="px-2 py-4">
+                <span class="px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-[8px] font-bold text-neutral-500 uppercase tracking-wider block max-w-[100px] truncate" v-if="item.origin" :title="item.origin">
                   {{ item.origin }}
                 </span>
-                <span class="text-neutral-300 italic text-[9px] font-bold" v-else>Không rõ</span>
+                <span class="text-neutral-300 italic text-[8px] font-bold" v-else>Không rõ</span>
               </td>
-              <td class="px-3 py-4 font-bold text-[10px] text-neutral-400 text-center whitespace-nowrap uppercase">
+              <td class="px-2 py-4 font-bold text-[9px] text-neutral-400 text-center whitespace-nowrap uppercase">
                 {{ item.unit }}
               </td>
-              <td class="px-3 py-4 text-right font-black text-neutral-800 text-xs whitespace-nowrap">
+              <td class="px-2 py-4 text-right font-black text-neutral-800 text-[11px] whitespace-nowrap">
                 {{ item.quantity }}
               </td>
-              <td class="px-4 py-4 text-right font-bold text-neutral-400 text-[10px] whitespace-nowrap">
+              <td class="px-2 py-4 text-right font-bold text-neutral-400 text-[9px] whitespace-nowrap">
                 {{ formatCurrency(item.unit_price) }}
               </td>
-              <td class="px-4 py-4 text-right font-black text-blue-600 text-xs whitespace-nowrap">
+              <td class="px-2 py-4 text-right font-black text-blue-600 text-[11px] whitespace-nowrap">
                 {{ formatCurrency((item.quantity || 0) * (item.unit_price || 0)) }}
               </td>
               <td class="px-5 py-4 whitespace-nowrap">
@@ -574,7 +587,20 @@ const modalLimitInfo = computed(() => {
             <!-- Tên vật tư nhập -->
             <div>
               <div class="flex items-center justify-between mb-2">
-                <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest">Chọn vật tư định mức *</label>
+                <div class="flex items-center gap-1.5">
+                  <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest">Chọn vật tư định mức *</label>
+                  <button 
+                    id="btn-reload-materials-cache"
+                    v-if="appStore.material_items.length > 0"
+                    type="button"
+                    @click="handleReloadMaterials"
+                    :disabled="isReloadingMaterials"
+                    class="p-1 text-neutral-400 hover:text-blue-600 transition-colors inline-flex items-center cursor-pointer disabled:opacity-50"
+                    title="Tải lại danh sách vật tư từ DB"
+                  >
+                    <RefreshCw :size="10" :class="{ 'animate-spin': isReloadingMaterials }" />
+                  </button>
+                </div>
                 <router-link 
                   v-if="appStore.material_items.length === 0"
                   to="/material-items"

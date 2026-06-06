@@ -341,7 +341,7 @@ const handleSubmit = async () => {
     <!-- Create Modal -->
     <div v-if="isFormOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-0 sm:p-4">
        <div @click="isFormOpen = false" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
-       <div class="relative w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] bg-white rounded-none sm:rounded-[3rem] shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in slide-in-from-bottom duration-500">
+       <div class="relative w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] bg-white rounded-none sm:rounded-[3rem] shadow-2xl flex flex-col md:flex-row overflow-y-auto sm:overflow-hidden animate-in slide-in-from-bottom duration-500">
           <div class="flex-1 p-8 lg:p-12 space-y-8 overflow-y-auto">
             <button @click="isFormOpen = false" class="absolute top-6 right-6 p-1.5 hover:bg-neutral-200 rounded-full transition-colors z-10">
                <X :size="20" class="text-neutral-400" />

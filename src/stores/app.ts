@@ -151,12 +151,22 @@ export const useAppStore = defineStore('app', {
 
     async refreshAll() {
       this.isLoading = true;
+      const CACHED_ENTITIES = ['departments', 'project_roles', 'department_positions', 'suppliers', 'material_items'];
       try {
         const results = await Promise.all(ENTITIES.map(async (entity) => {
           try {
+            if (CACHED_ENTITIES.includes(entity)) {
+              const cachedData = localStorage.getItem(`cache_${entity}`);
+              if (cachedData) {
+                return { entity, data: JSON.parse(cachedData) };
+              }
+            }
             const q = query(collection(db, entity));
             const snap = await getDocs(q);
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            if (CACHED_ENTITIES.includes(entity)) {
+              localStorage.setItem(`cache_${entity}`, JSON.stringify(data));
+            }
             return { entity, data };
           } catch (entityErr) {
             console.warn(`Error compiling/loading entity ${entity} from Firestore:`, entityErr);
@@ -204,6 +214,38 @@ export const useAppStore = defineStore('app', {
       }
     },
 
+    async forceReloadEntity(entity: string) {
+      this.isLoading = true;
+      const CACHED_ENTITIES = ['departments', 'project_roles', 'department_positions', 'suppliers', 'material_items'];
+      try {
+        localStorage.removeItem(`cache_${entity}`);
+        const q = query(collection(db, entity));
+        const snap = await getDocs(q);
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (CACHED_ENTITIES.includes(entity)) {
+          localStorage.setItem(`cache_${entity}`, JSON.stringify(data));
+        }
+        (this as any)[entity] = data;
+        
+        // Filter & sort locally to reflect changes immediately
+        if (entity === 'departments') {
+          this.departments = this.departments.filter(d => d.is_deleted !== 1);
+        } else if (entity === 'project_roles') {
+          this.project_roles = this.project_roles.filter(r => r.is_deleted !== 1);
+        } else if (entity === 'department_positions') {
+          this.department_positions = (this.department_positions || []).filter(p => p.is_deleted !== 1);
+        } else if (entity === 'suppliers') {
+          this.suppliers = (this.suppliers || []).filter(s => s.is_deleted !== 1);
+        } else if (entity === 'material_items') {
+          this.material_items = (this.material_items || []).filter(m => m.is_deleted !== 1).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        }
+      } catch (err) {
+        console.error(`Error force reloading ${entity} from Firestore:`, err);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     async migrateAssignmentIds() {
       // Find assignments that don't follow the {employee_id}_{project_id} format
       const legacyAssignments = this.project_assignments.filter(a => a.id !== `${a.employee_id}_${a.project_id}`);
@@ -237,6 +279,11 @@ export const useAppStore = defineStore('app', {
       this.isLoading = true;
       const targetId = data.id || (action === 'CREATE' ? doc(collection(db, entity)).id : undefined);
       const path = `${entity}/${targetId || 'new'}`;
+      
+      const CACHED_ENTITIES = ['departments', 'project_roles', 'department_positions', 'suppliers', 'material_items'];
+      if (CACHED_ENTITIES.includes(entity)) {
+        localStorage.removeItem(`cache_${entity}`);
+      }
       
       try {
         const cleanData = JSON.parse(JSON.stringify(toRaw(data)));

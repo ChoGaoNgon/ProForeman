@@ -248,6 +248,78 @@ const removeAssignment = async (id: string) => {
   }
 };
 
+// Contract Addenda (Phục lục hợp đồng) Logic
+const showAddendumModal = ref(false);
+const editingAddendumIndex = ref<number | null>(null);
+const addendumForm = reactive({
+  addendum_number: '',
+  name: '',
+  file_url: ''
+});
+
+const openAddAddendum = () => {
+  editingAddendumIndex.value = null;
+  addendumForm.addendum_number = '';
+  addendumForm.name = '';
+  addendumForm.file_url = '';
+  showAddendumModal.value = true;
+};
+
+const openEditAddendum = (idx: number) => {
+  editingAddendumIndex.value = idx;
+  const item = project.value.contract_addenda?.[idx] || {};
+  addendumForm.addendum_number = item.addendum_number || '';
+  addendumForm.name = item.name || '';
+  addendumForm.file_url = item.file_url || '';
+  showAddendumModal.value = true;
+};
+
+const saveAddendum = async () => {
+  if (!project.value || !addendumForm.name) return;
+  actionLoading.value = true;
+  try {
+    const updatedAddenda = [...(project.value.contract_addenda || [])];
+    const data = { ...addendumForm };
+    if (editingAddendumIndex.value === null) {
+      updatedAddenda.push(data);
+    } else {
+      updatedAddenda[editingAddendumIndex.value] = data;
+    }
+    
+    await appStore.saveEntity('projects', 'UPDATE', {
+      ...project.value,
+      contract_addenda: updatedAddenda
+    });
+    project.value.contract_addenda = updatedAddenda;
+    showAddendumModal.value = false;
+  } catch (err) {
+    console.error('Error saving contract addendum:', err);
+  } finally {
+    actionLoading.value = false;
+  }
+};
+
+const removeAddendum = async (idx: number) => {
+  if (!project.value || !confirm('Bạn chắc chắn muốn xóa phụ lục hợp đồng này?')) return;
+  actionLoading.value = true;
+  try {
+    const updatedAddenda = [...(project.value.contract_addenda || [])];
+    updatedAddenda.splice(idx, 1);
+    
+    await appStore.saveEntity('projects', 'UPDATE', {
+      ...project.value,
+      contract_addenda: updatedAddenda
+    });
+    project.value.contract_addenda = updatedAddenda;
+  } catch (err) {
+    console.error('Error deleting contract addendum:', err);
+  } finally {
+    actionLoading.value = false;
+  }
+};
+
+
+
 const handleDeleteProject = async () => {
   if (!project.value) return;
   isDeleting.value = true;
@@ -624,6 +696,73 @@ const handleDeleteProject = async () => {
            </div>
         </div>
 
+        <!-- Contract Appendices Section -->
+        <div id="contract-appendices-panel" class="bg-white p-6 rounded-[2rem] border border-neutral-100 shadow-sm space-y-4">
+           <div class="flex items-center justify-between">
+              <h2 class="text-[10px] font-black text-neutral-900 uppercase tracking-widest flex items-center gap-2">
+                <ScrollText :size="14" class="text-neutral-500" />
+                Phụ lục hợp đồng
+              </h2>
+              <button 
+                id="btn-add-addendum"
+                type="button"
+                v-if="isManagement" 
+                @click="openAddAddendum"
+                class="text-xs text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 uppercase text-[9px] tracking-widest font-black cursor-pointer inline-flex items-center bg-transparent border-none"
+              >
+                <Plus :size="10" />
+                Thêm mới
+              </button>
+           </div>
+
+
+
+           <div v-if="project.contract_addenda?.length" class="space-y-3.5 divide-y divide-neutral-100 max-h-[350px] overflow-y-auto pr-1">
+              <div v-for="(item, idx) in project.contract_addenda" :key="idx" :class="['pt-3.5', idx === 0 ? 'pt-0' : '']">
+                 <div class="flex justify-between items-start">
+                    <div class="space-y-0.5">
+                       <p class="text-[9px] font-black text-neutral-400 uppercase leading-none">
+                         {{ item.addendum_number || `PHỤ LỤC ${idx + 1}` }}
+                       </p>
+                       <p class="text-[12px] font-extrabold text-neutral-800 leading-tight">
+                         {{ item.name || 'Phụ lục chưa đặt tên' }}
+                       </p>
+                       <div v-if="item.file_url" class="flex items-center gap-1 text-[10px] text-blue-600 font-bold mt-1.5">
+                          <ExternalLink :size="10" />
+                          <a :href="item.file_url" target="_blank" class="hover:underline">Xem phụ lục đính kèm</a>
+                       </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-1 shrink-0 ml-2">
+                       <a v-if="item.file_url" :href="item.file_url" target="_blank" class="p-1 hover:bg-neutral-50 text-neutral-550 hover:text-blue-600 rounded transition-all" title="Xem tệp đính kèm">
+                          <ExternalLink :size="12" />
+                       </a>
+                       <button v-if="isManagement" @click="openEditAddendum(idx)" class="p-1 hover:bg-neutral-50 text-neutral-450 hover:text-blue-600 rounded transition-all cursor-pointer" title="Sửa phụ lục">
+                          <Edit2 :size="12" />
+                       </button>
+                       <button v-if="isManagement" @click="removeAddendum(idx)" class="p-1 hover:bg-neutral-50 text-neutral-450 hover:text-red-500 rounded transition-all cursor-pointer" title="Xóa phụ lục">
+                          <Trash2 :size="12" />
+                       </button>
+                    </div>
+                 </div>
+              </div>
+           </div>
+           
+           <div v-else class="text-center py-6 px-4 bg-neutral-50/50 rounded-2xl border border-dashed border-neutral-200">
+              <p class="text-[11px] font-medium text-neutral-400">Không có phụ lục hợp đồng nào.</p>
+              <button 
+                id="btn-add-addendum-empty"
+                type="button"
+                v-if="isManagement"
+                @click="openAddAddendum" 
+                class="mt-3 px-4 py-1.5 bg-neutral-900 text-white text-[9px] font-black uppercase rounded-lg tracking-wider hover:bg-neutral-800 transition-all inline-flex items-center gap-1 cursor-pointer"
+              >
+                <Plus :size="10" />
+                Thêm ngay
+              </button>
+           </div>
+        </div>
+
         <!-- Project Notes Panel -->
         <div class="bg-white p-6 rounded-[2rem] border border-neutral-100 shadow-sm space-y-4">
            <div class="flex items-center justify-between">
@@ -786,6 +925,59 @@ const handleDeleteProject = async () => {
             </button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Contract Addendum Add/Edit Modal -->
+    <div v-if="showAddendumModal" class="fixed inset-0 z-[115] flex items-center justify-center p-4">
+      <div @click="showAddendumModal = false" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
+      <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl max-h-[90vh] overflow-y-auto p-10 animate-in zoom-in duration-300">
+        <h2 class="text-2xl font-black text-neutral-900 uppercase mb-2 text-center tracking-tighter">
+          {{ editingAddendumIndex === null ? 'Thêm phụ lục mới' : 'Sửa phụ lục hợp đồng' }}
+        </h2>
+        <p class="text-xs font-bold text-neutral-400 text-center mb-8 uppercase tracking-widest">
+          Phụ lục hợp đồng đính kèm công trình
+        </p>
+        
+        <form @submit.prevent="saveAddendum" class="space-y-6">
+          <div>
+            <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Số phụ lục</label>
+            <input 
+              v-model="addendumForm.addendum_number" 
+              type="text" 
+              placeholder="VD: PL01/2024/MT2" 
+              class="w-full h-14 px-5 bg-neutral-50 border border-neutral-100 rounded-2xl font-bold focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all focus:outline-none focus:border-blue-500" 
+            />
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Tên phụ lục *</label>
+            <input 
+              v-model="addendumForm.name" 
+              type="text" 
+              required
+              placeholder="VD: Bổ sung hạng mục XL-02" 
+              class="w-full h-14 px-5 bg-neutral-50 border border-neutral-100 rounded-2xl font-bold focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all focus:outline-none focus:border-blue-500" 
+            />
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2 px-1">Link phụ lục</label>
+            <input 
+              v-model="addendumForm.file_url" 
+              type="text" 
+              placeholder="VD: https://..." 
+              class="w-full h-14 px-5 bg-neutral-50 border border-neutral-100 rounded-2xl font-bold focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all focus:outline-none focus:border-blue-500" 
+            />
+          </div>
+
+          <div class="pt-4 flex gap-3">
+            <button type="button" @click="showAddendumModal = false" class="flex-1 h-14 bg-neutral-100 text-neutral-900 font-black rounded-2xl uppercase tracking-widest hover:bg-neutral-200 transition-all">Hủy</button>
+            <button type="submit" :disabled="actionLoading" class="flex-[2] h-14 bg-blue-600 disabled:opacity-50 text-white font-black rounded-2xl uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/30 transition-all">
+              {{ actionLoading ? 'Đang thực hiện...' : 'Lưu lại' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
