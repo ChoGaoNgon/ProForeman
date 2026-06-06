@@ -25,10 +25,23 @@ const form = reactive({
   delivery_date: '',
   contract_file_url: '',
   start_date: new Date().toISOString().split('T')[0],
+  duration: null as number | null,
   recovery_deadline_ratio: 80, // Default 80%
   payment_plan: [] as any[],
   material_norms: [] as any[],
   contract_addenda: [] as any[]
+});
+
+// Watch start_date or duration to calculate expected_end_date
+watch(() => [form.start_date, form.duration], ([newStart, newDuration]) => {
+  if (newStart && (newDuration !== null && newDuration !== undefined && newDuration !== '')) {
+    const days = parseInt(newDuration as any, 10);
+    if (!isNaN(days) && days >= 0) {
+      const start = new Date(newStart);
+      start.setDate(start.getDate() + days);
+      form.expected_end_date = start.toISOString().split('T')[0];
+    }
+  }
 });
 
 onMounted(async () => {
@@ -46,6 +59,14 @@ onMounted(async () => {
     }
     if (!form.contract_addenda) {
       form.contract_addenda = [];
+    }
+    // Calculate initial duration for existing projects if they don't have it saved yet
+    if ((form.duration === undefined || form.duration === null) && form.start_date && form.expected_end_date) {
+      const start = new Date(form.start_date);
+      const end = new Date(form.expected_end_date);
+      const diffTime = end.getTime() - start.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      form.duration = diffDays >= 0 ? diffDays : 0;
     }
   } else {
     form.material_norms = [];
@@ -207,37 +228,49 @@ const handleSubmit = async () => {
           </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Ngày bắt đầu</label>
             <div class="relative">
-              <Calendar class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" :size="18" />
+              <Calendar class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" :size="14" />
               <input 
                 v-model="form.start_date"
                 type="date" 
-                class="w-full h-14 pl-12 pr-4 bg-neutral-50 border border-neutral-100 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold"
+                class="w-full h-14 pl-9 pr-2 bg-neutral-50 border border-neutral-100 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-xs"
+              />
+            </div>
+          </div>
+          <div>
+            <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Tiến độ (Ngày)</label>
+            <div class="relative">
+              <input 
+                v-model.number="form.duration"
+                type="number" 
+                placeholder="VD: 200"
+                min="0"
+                class="w-full h-14 px-4 bg-neutral-50 border border-neutral-100 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-xs"
               />
             </div>
           </div>
           <div>
             <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Dự kiến kết thúc</label>
             <div class="relative">
-              <Calendar class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" :size="18" />
+              <Calendar class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" :size="14" />
               <input 
                 v-model="form.expected_end_date"
                 type="date" 
-                class="w-full h-14 pl-12 pr-4 bg-neutral-50 border border-neutral-100 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold"
+                class="w-full h-14 pl-9 pr-2 bg-neutral-50 border border-neutral-100 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-xs"
               />
             </div>
           </div>
           <div>
             <label class="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Ngày bàn giao</label>
             <div class="relative">
-              <Calendar class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" :size="18" />
+              <Calendar class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" :size="14" />
               <input 
                 v-model="form.delivery_date"
                 type="date" 
-                class="w-full h-14 pl-12 pr-4 bg-neutral-50 border border-neutral-100 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold"
+                class="w-full h-14 pl-9 pr-2 bg-neutral-50 border border-neutral-100 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-xs"
               />
             </div>
           </div>
