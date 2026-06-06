@@ -131,6 +131,21 @@ const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 };
 
+const getCalculatedDuration = (proj: any) => {
+  if (!proj) return 'N/A';
+  if (proj.duration !== undefined && proj.duration !== null && proj.duration !== '') {
+    return `${proj.duration} ngày`;
+  }
+  if (proj.start_date && proj.expected_end_date) {
+    const start = new Date(proj.start_date);
+    const end = new Date(proj.expected_end_date);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 ? `${diffDays} ngày` : 'N/A';
+  }
+  return 'N/A';
+};
+
 const updateStatus = async (newStatus: string) => {
   if (!project.value || actionLoading.value) return;
   actionLoading.value = true;
@@ -355,6 +370,15 @@ const handleDeleteProject = async () => {
             <div>
               <p class="text-[8px] font-black text-white/40 uppercase tracking-widest mb-0.5">Ngày bắt đầu</p>
               <p class="font-bold text-[11px]">{{ project.start_date || 'N/A' }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 group">
+            <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center transition-colors group-hover:bg-white/20">
+              <Clock :size="16" class="text-sky-400" />
+            </div>
+            <div>
+              <p class="text-[8px] font-black text-white/40 uppercase tracking-widest mb-0.5">Tiến độ</p>
+              <p class="font-bold text-[11px] text-sky-400">{{ getCalculatedDuration(project) }}</p>
             </div>
           </div>
           <div class="flex items-center gap-3 group">
