@@ -27,7 +27,8 @@ const form = reactive({
   start_date: new Date().toISOString().split('T')[0],
   recovery_deadline_ratio: 80, // Default 80%
   payment_plan: [] as any[],
-  material_norms: [] as any[]
+  material_norms: [] as any[],
+  contract_addenda: [] as any[]
 });
 
 onMounted(async () => {
@@ -43,8 +44,12 @@ onMounted(async () => {
     if (!form.material_norms) {
       form.material_norms = [];
     }
+    if (!form.contract_addenda) {
+      form.contract_addenda = [];
+    }
   } else {
     form.material_norms = [];
+    form.contract_addenda = [];
   }
 });
 
@@ -72,6 +77,23 @@ const addPaymentMilestone = () => {
 
 const removePaymentMilestone = (index: number) => {
   form.payment_plan.splice(index, 1);
+};
+
+const addContractAddendum = () => {
+  if (!form.contract_addenda) {
+    form.contract_addenda = [];
+  }
+  form.contract_addenda.push({
+    addendum_number: '',
+    name: '',
+    file_url: ''
+  });
+};
+
+const removeContractAddendum = (index: number) => {
+  if (form.contract_addenda) {
+    form.contract_addenda.splice(index, 1);
+  }
 };
 
 const addMaterialNorm = () => {
@@ -246,6 +268,47 @@ const handleSubmit = async () => {
               />
             </div>
           </div>
+        </div>
+
+        <!-- Contract Appendices Section -->
+        <div class="space-y-4 pt-6 border-t border-neutral-100">
+           <div class="flex items-center justify-between">
+             <h3 class="text-xs font-black text-neutral-900 uppercase tracking-widest">Phụ lục hợp đồng kèm theo</h3>
+             <button type="button" @click="addContractAddendum" class="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase flex items-center gap-1 cursor-pointer">
+               <Plus :size="12" />
+               <span>Thêm phụ lục</span>
+             </button>
+           </div>
+           
+           <div v-if="!form.contract_addenda || form.contract_addenda.length === 0" class="p-6 border border-dashed border-neutral-100 rounded-2xl text-center bg-neutral-50/20">
+              <p class="text-xs text-neutral-400 italic">Chưa có phụ lục hợp đồng nào</p>
+           </div>
+
+           <div v-for="(addendum, index) in form.contract_addenda" :key="index" class="bg-neutral-50/50 p-4 rounded-xl border border-neutral-100 relative group transition-colors hover:border-neutral-200">
+              <button type="button" @click="removeContractAddendum(index)" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                <MinusCircle :size="14" />
+              </button>
+              <div class="flex items-center gap-3 mb-3">
+                <div class="w-6 h-6 bg-neutral-900 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {{ index + 1 }}
+                </div>
+                <span class="text-[10px] font-black text-neutral-900 tracking-wider">Phụ lục {{ index + 1 }}</span>
+              </div>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <p class="text-[9px] font-bold text-neutral-400 uppercase mb-1">Số phụ lục</p>
+                  <input v-model="addendum.addendum_number" type="text" placeholder="VD: PL01/2024" class="w-full h-10 px-3 bg-white border border-neutral-100 rounded-lg text-xs font-bold focus:outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                  <p class="text-[9px] font-bold text-neutral-400 uppercase mb-1">Tên phụ lục</p>
+                  <input v-model="addendum.name" type="text" placeholder="VD: Bổ sung nhân sự" class="w-full h-10 px-3 bg-white border border-neutral-100 rounded-lg text-xs font-bold focus:outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                  <p class="text-[9px] font-bold text-neutral-400 uppercase mb-1">Link phụ lục</p>
+                  <input v-model="addendum.file_url" type="text" placeholder="https://..." class="w-full h-10 px-3 bg-white border border-neutral-100 rounded-lg text-xs font-bold text-blue-600 focus:outline-none focus:border-blue-500" />
+                </div>
+              </div>
+           </div>
         </div>
 
         <!-- Slider for recovery ratio -->
