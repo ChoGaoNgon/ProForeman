@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useAppStore } from '@/stores/app';
-import { 
-  Plus, 
-  Search, 
-  Edit2, 
-  Trash2, 
-  X, 
-  Layers, 
+import * as XLSX from 'xlsx';
+import {
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  X,
+  Layers,
   Sparkles,
   Info,
   Check,
-  RotateCcw
+  RotateCcw,
+  FileUp,
+  Download,
+  AlertTriangle,
+  FileSpreadsheet
 } from 'lucide-vue-next';
 
 const appStore = useAppStore();
@@ -21,6 +26,20 @@ const isModalOpen = ref(false);
 const modalMode = ref<'CREATE' | 'UPDATE'>('CREATE');
 const loading = ref(false);
 const seedLoading = ref(false);
+
+// Excel Upload States
+const isUploadModalOpen = ref(false);
+const uploadStep = ref<'idle' | 'previewing' | 'importing'>('idle');
+const previewRows = ref<Array<{
+  name: string;
+  code: string;
+  default_unit: string;
+  default_unit_price: number;
+  status: 'new' | 'overwrite' | 'error';
+  errorMsg?: string;
+  existingId?: string;
+}>>([]);
+const importLoading = ref(false);
 
 // Search & Filtering
 const searchQuery = ref('');
@@ -161,6 +180,127 @@ const handleSeedSamples = async () => {
     seedLoading.value = false;
   }
 };
+
+// Download Excel template
+const handleDownloadTemplate = () => {
+  const headers = ['Tên vật tư', 'Mã vật tư', 'Đơn vị', 'Đơn giá (VND)'];
+  const sampleRow = ['Xi măng Hà Tiên PC40', 'XM-HT-PC40', 'bao', 92000];
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+  ws['!cols'] = [
+    { wch: 30 },
+    { wch: 18 },
+    { wch: 15 },
+    { wch: 18 },
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Danh mục vật tư');
+  XLSX.writeFile(wb, 'mau-danh-muc-vat-tu.xlsx');
+};
+
+// Parse uploaded Excel file
+const handleFileUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+    const dataRows = rawRows.slice(1).filter(row => row.some(cell => cell !== undefined && cell !== ''));
+    const existingItems = appStore.material_items || [];
+
+    const parsed = dataRows.map(row => {
+      const name = String(row[0] || '').trim();
+      const code = String(row[1] || '').trim().toUpperCase();
+      const default_unit = String(row[2] || '').trim();
+      const rawPrice = row[3];
+      const default_unit_price = Number(rawPrice) || 0;
+
+      if (!name) {
+        return { name, code, default_unit, default_unit_price, status: 'error' as const, errorMsg: 'Thiếu tên vật tư' };
+      }
+      if (!default_unit) {
+        return { name, code, default_unit, default_unit_price, status: 'error' as const, errorMsg: 'Thiếu đơn vị' };
+      }
+      if (rawPrice !== undefined && rawPrice !== '' && isNaN(Number(rawPrice))) {
+        return { name, code, default_unit, default_unit_price: 0, status: 'error' as const, errorMsg: 'Đơn giá không hợp lệ' };
+      }
+
+      let existing: any = null;
+      if (code) {
+        existing = existingItems.find((item: any) => (item.code || '').toUpperCase() === code);
+      }
+      if (!existing) {
+        existing = existingItems.find((item: any) => (item.name || '').toLowerCase() === name.toLowerCase());
+      }
+
+      if (existing) {
+        return { name, code, default_unit, default_unit_price, status: 'overwrite' as const, existingId: existing.id };
+      }
+
+      return { name, code, default_unit, default_unit_price, status: 'new' as const };
+    });
+
+    previewRows.value = parsed;
+    uploadStep.value = 'previewing';
+  } catch (err) {
+    console.error('Lỗi khi đọc file Excel:', err);
+    alert('Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng file.');
+  }
+
+  target.value = '';
+};
+
+// Import validated rows to Firestore
+const handleConfirmImport = async () => {
+  const validRows = previewRows.value.filter(r => r.status !== 'error');
+  if (validRows.length === 0) return;
+
+  importLoading.value = true;
+  uploadStep.value = 'importing';
+
+  try {
+    for (const row of validRows) {
+      const payload = {
+        name: row.name,
+        code: row.code,
+        default_unit: row.default_unit,
+        default_unit_price: row.default_unit_price
+      };
+
+      if (row.status === 'overwrite' && row.existingId) {
+        await appStore.saveEntity('material_items', 'UPDATE', { ...payload, id: row.existingId });
+      } else {
+        await appStore.saveEntity('material_items', 'CREATE', payload);
+      }
+    }
+
+    isUploadModalOpen.value = false;
+  } catch (err) {
+    console.error('Lỗi khi nhập vật tư từ Excel:', err);
+    alert('Có lỗi xảy ra khi nhập dữ liệu. Vui lòng thử lại.');
+  } finally {
+    importLoading.value = false;
+    uploadStep.value = 'idle';
+  }
+};
+
+// Preview summary counts
+const previewSummary = computed(() => {
+  const rows = previewRows.value;
+  return {
+    total: rows.length,
+    newCount: rows.filter(r => r.status === 'new').length,
+    overwriteCount: rows.filter(r => r.status === 'overwrite').length,
+    errorCount: rows.filter(r => r.status === 'error').length,
+    validCount: rows.filter(r => r.status !== 'error').length
+  };
+});
 </script>
 
 <template>
@@ -192,8 +332,17 @@ const handleSeedSamples = async () => {
           <span>{{ seedLoading ? 'ĐANG KHỞI TẠO...' : 'NẠP DANH MỤC MẪU' }}</span>
         </button>
 
+        <!-- Import from Excel button -->
+        <button
+          @click="isUploadModalOpen = true; uploadStep = 'idle'; previewRows = []; "
+          class="h-14 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase text-xs flex items-center gap-2 shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+        >
+          <FileUp :size="16" />
+          <span>NHẬP TỪ EXCEL</span>
+        </button>
+
         <!-- Add Material Item button -->
-        <button 
+        <button
           @click="openAddModal"
           class="h-14 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase text-xs flex items-center gap-2 shadow-lg hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
         >
@@ -435,6 +584,156 @@ const handleSeedSamples = async () => {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Excel Upload Modal -->
+    <div v-if="isUploadModalOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <div @click="isUploadModalOpen = false" class="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm"></div>
+
+      <div class="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-2xl max-h-[90vh] overflow-y-auto p-10 lg:p-12 animate-in zoom-in duration-300">
+        <button @click="isUploadModalOpen = false" class="absolute top-8 right-8 p-1.5 hover:bg-neutral-200 rounded-full transition-colors z-10 cursor-pointer">
+          <X :size="20" class="text-neutral-400" />
+        </button>
+
+        <div class="space-y-8">
+          <div>
+            <h2 class="text-3xl font-black text-neutral-900 uppercase leading-none">
+              NHẬP VẬT TƯ TỪ EXCEL
+            </h2>
+            <p class="text-neutral-500 mt-2 font-bold text-xs uppercase tracking-widest">
+              Upload file Excel để nhập hàng loạt vật tư vào danh mục
+            </p>
+          </div>
+
+          <!-- Step 1: Upload area (idle) -->
+          <div v-if="uploadStep === 'idle'" class="space-y-6">
+            <button
+              @click="handleDownloadTemplate"
+              class="w-full p-5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-2xl flex items-center gap-4 transition-all cursor-pointer group"
+            >
+              <div class="w-12 h-12 bg-blue-100 group-hover:bg-blue-200 rounded-xl flex items-center justify-center transition-all">
+                <Download :size="20" class="text-blue-600" />
+              </div>
+              <div class="text-left">
+                <p class="font-black text-sm text-blue-800 uppercase">TẢI FILE MẪU</p>
+                <p class="text-xs font-semibold text-blue-600/70 mt-0.5">Download file Excel mẫu với 4 cột: Tên vật tư, Mã vật tư, Đơn vị, Đơn giá</p>
+              </div>
+            </button>
+
+            <label class="block w-full p-12 border-2 border-dashed border-neutral-200 hover:border-blue-400 rounded-2xl text-center cursor-pointer transition-all hover:bg-blue-50/30 group">
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                @change="handleFileUpload"
+                class="hidden"
+              />
+              <div class="flex flex-col items-center gap-3">
+                <div class="w-16 h-16 bg-neutral-100 group-hover:bg-blue-100 rounded-2xl flex items-center justify-center transition-all">
+                  <FileSpreadsheet :size="28" class="text-neutral-400 group-hover:text-blue-500" />
+                </div>
+                <div>
+                  <p class="font-black text-sm text-neutral-700 uppercase">Chọn file hoặc kéo thả vào đây</p>
+                  <p class="text-xs font-semibold text-neutral-400 mt-1">Hỗ trợ định dạng .xlsx, .xls</p>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Step 2: Preview table -->
+          <div v-if="uploadStep === 'previewing' || uploadStep === 'importing'" class="space-y-6">
+            <div class="flex flex-wrap gap-3">
+              <span class="px-4 py-2 bg-neutral-100 rounded-xl text-xs font-black uppercase text-neutral-600">
+                Tổng: {{ previewSummary.total }} dòng
+              </span>
+              <span class="px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-black uppercase text-emerald-700">
+                Mới: {{ previewSummary.newCount }}
+              </span>
+              <span class="px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs font-black uppercase text-amber-700">
+                Ghi đè: {{ previewSummary.overwriteCount }}
+              </span>
+              <span v-if="previewSummary.errorCount > 0" class="px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-xs font-black uppercase text-red-700">
+                Lỗi: {{ previewSummary.errorCount }}
+              </span>
+            </div>
+
+            <div class="border border-neutral-100 rounded-2xl overflow-hidden">
+              <div class="overflow-x-auto max-h-[40vh]">
+                <table class="w-full border-collapse text-left">
+                  <thead class="sticky top-0 bg-white z-10">
+                    <tr class="border-b border-neutral-100">
+                      <th class="px-5 py-3 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Trạng thái</th>
+                      <th class="px-5 py-3 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Tên vật tư</th>
+                      <th class="px-5 py-3 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Mã vật tư</th>
+                      <th class="px-5 py-3 text-[10px] font-black text-neutral-400 uppercase tracking-widest">Đơn vị</th>
+                      <th class="px-5 py-3 text-[10px] font-black text-neutral-400 uppercase tracking-widest text-right">Đơn giá (VNĐ)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(row, idx) in previewRows"
+                      :key="idx"
+                      :class="{
+                        'bg-amber-50/50': row.status === 'overwrite',
+                        'bg-red-50/50': row.status === 'error'
+                      }"
+                      class="border-b border-neutral-50 last:border-0"
+                    >
+                      <td class="px-5 py-3">
+                        <span v-if="row.status === 'new'" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase">Mới</span>
+                        <span v-else-if="row.status === 'overwrite'" class="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-black uppercase">Ghi đè</span>
+                        <span v-else class="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-[10px] font-black uppercase" :title="row.errorMsg">Lỗi</span>
+                      </td>
+                      <td class="px-5 py-3 text-sm font-extrabold text-neutral-900">{{ row.name || '—' }}</td>
+                      <td class="px-5 py-3 text-xs font-bold text-neutral-500 uppercase">{{ row.code || '—' }}</td>
+                      <td class="px-5 py-3 text-xs font-bold text-neutral-500">{{ row.default_unit || '—' }}</td>
+                      <td class="px-5 py-3 text-right text-sm font-black text-emerald-600">
+                        {{ row.default_unit_price ? formatCurrency(row.default_unit_price) : '0 ₫' }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div v-if="previewSummary.errorCount > 0" class="p-4 bg-red-50 rounded-2xl border border-red-100 flex items-start gap-3">
+              <AlertTriangle :size="16" class="text-red-500 shrink-0 mt-0.5" />
+              <p class="text-xs font-semibold text-red-700">
+                {{ previewSummary.errorCount }} dòng có lỗi sẽ bị bỏ qua khi nhập. Chỉ các dòng hợp lệ mới được lưu vào hệ thống.
+              </p>
+            </div>
+
+            <div class="pt-4 border-t border-neutral-100 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                @click="uploadStep = 'idle'; previewRows = [];"
+                :disabled="importLoading"
+                class="px-5 py-3 border border-neutral-200 text-neutral-500 rounded-2xl font-bold text-xs uppercase hover:bg-neutral-50 transition-all cursor-pointer disabled:opacity-50"
+              >
+                CHỌN FILE KHÁC
+              </button>
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  @click="isUploadModalOpen = false"
+                  :disabled="importLoading"
+                  class="px-5 py-3 border border-neutral-200 text-neutral-500 rounded-2xl font-bold text-xs uppercase hover:bg-neutral-50 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  HỦY BỎ
+                </button>
+                <button
+                  type="button"
+                  @click="handleConfirmImport"
+                  :disabled="importLoading || previewSummary.validCount === 0"
+                  class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase text-xs transition-all shadow-lg disabled:opacity-50 cursor-pointer"
+                >
+                  <span v-if="importLoading" class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></span>
+                  <span>{{ importLoading ? 'ĐANG NHẬP...' : `XÁC NHẬN NHẬP (${previewSummary.validCount})` }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
