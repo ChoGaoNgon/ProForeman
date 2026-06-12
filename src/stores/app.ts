@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia';
 import { toRaw } from 'vue';
 import { 
-  collection, 
-  getDocs, 
-  doc, 
-  setDoc, 
+  collection,
+  getDocs,
+  getDoc,
+  doc,
+  setDoc,
   updateDoc, 
   deleteDoc, 
   query, 
@@ -20,6 +21,32 @@ import { db, OperationType, handleFirestoreError } from '@/services/firebase';
 import { useAuthStore } from '@/stores/auth';
 
 const ENTITIES = ['departments', 'employees', 'project_roles', 'department_positions', 'projects', 'payments', 'project_assignments', 'materials', 'suppliers', 'material_items'];
+
+// Low-frequency catalogs cached in localStorage. Cross-client freshness is kept by
+// comparing a per-entity version marker stored in Firestore (app_meta/cache_versions)
+// against the version that was current when this browser last cached the entity.
+const CACHED_ENTITIES = ['departments', 'project_roles', 'department_positions', 'suppliers', 'material_items'];
+const CACHE_VERSIONS_DOC = 'cache_versions';
+
+// Read the cross-client cache version markers. Firestore stores them as serverTimestamps;
+// normalize each to a millisecond number. Returns {} on any failure so callers fall back
+// to fetching fresh data (never serving unverifiable cache).
+async function loadCacheVersions(): Promise<Record<string, number>> {
+  try {
+    const snap = await getDoc(doc(db, 'app_meta', CACHE_VERSIONS_DOC));
+    if (!snap.exists()) return {};
+    const raw = snap.data() as Record<string, any>;
+    const out: Record<string, number> = {};
+    for (const key of Object.keys(raw)) {
+      const v = raw[key];
+      out[key] = v && typeof v.toMillis === 'function' ? v.toMillis() : (typeof v === 'number' ? v : 0);
+    }
+    return out;
+  } catch (err) {
+    console.warn('Failed to read cache versions; will fetch fresh:', err);
+    return {};
+  }
+}
 
 export const useAppStore = defineStore('app', {
   state: () => ({
@@ -151,13 +178,17 @@ export const useAppStore = defineStore('app', {
 
     async refreshAll() {
       this.isLoading = true;
-      const CACHED_ENTITIES = ['departments', 'project_roles', 'department_positions', 'suppliers', 'material_items'];
+      const versions = await loadCacheVersions();
       try {
         const results = await Promise.all(ENTITIES.map(async (entity) => {
           try {
             if (CACHED_ENTITIES.includes(entity)) {
+              const serverVer = String(versions[entity] ?? 0);
+              const localVer = localStorage.getItem(`cache_ver_${entity}`);
               const cachedData = localStorage.getItem(`cache_${entity}`);
-              if (cachedData) {
+              // Use cache only when this browser cached the exact version Firestore still reports.
+              // Any write by any user bumps the server version, forcing every other browser to refetch.
+              if (cachedData !== null && localVer === serverVer) {
                 return { entity, data: JSON.parse(cachedData) };
               }
             }
@@ -166,6 +197,7 @@ export const useAppStore = defineStore('app', {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             if (CACHED_ENTITIES.includes(entity)) {
               localStorage.setItem(`cache_${entity}`, JSON.stringify(data));
+              localStorage.setItem(`cache_ver_${entity}`, String(versions[entity] ?? 0));
             }
             return { entity, data };
           } catch (entityErr) {
@@ -216,14 +248,15 @@ export const useAppStore = defineStore('app', {
 
     async forceReloadEntity(entity: string) {
       this.isLoading = true;
-      const CACHED_ENTITIES = ['departments', 'project_roles', 'department_positions', 'suppliers', 'material_items'];
       try {
         localStorage.removeItem(`cache_${entity}`);
         const q = query(collection(db, entity));
         const snap = await getDocs(q);
         const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (CACHED_ENTITIES.includes(entity)) {
+          const versions = await loadCacheVersions();
           localStorage.setItem(`cache_${entity}`, JSON.stringify(data));
+          localStorage.setItem(`cache_ver_${entity}`, String(versions[entity] ?? 0));
         }
         (this as any)[entity] = data;
         
@@ -280,11 +313,10 @@ export const useAppStore = defineStore('app', {
       const targetId = data.id || (action === 'CREATE' ? doc(collection(db, entity)).id : undefined);
       const path = `${entity}/${targetId || 'new'}`;
       
-      const CACHED_ENTITIES = ['departments', 'project_roles', 'department_positions', 'suppliers', 'material_items'];
       if (CACHED_ENTITIES.includes(entity)) {
         localStorage.removeItem(`cache_${entity}`);
       }
-      
+
       try {
         const cleanData = JSON.parse(JSON.stringify(toRaw(data)));
 
@@ -310,6 +342,21 @@ export const useAppStore = defineStore('app', {
             updated_at: serverTimestamp()
           });
         }
+
+        // Bump the cross-client version marker so every other browser refetches this entity
+        // on its next refreshAll (instead of serving its own stale localStorage cache).
+        if (CACHED_ENTITIES.includes(entity)) {
+          try {
+            await setDoc(
+              doc(db, 'app_meta', CACHE_VERSIONS_DOC),
+              { [entity]: serverTimestamp() },
+              { merge: true }
+            );
+          } catch (verErr) {
+            console.warn(`Failed to bump cache version for ${entity}:`, verErr);
+          }
+        }
+
         await this.refreshAll();
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, path);

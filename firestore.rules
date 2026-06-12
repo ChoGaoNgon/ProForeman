@@ -171,5 +171,13 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+
+    // App Meta — holds cross-client cache version markers only (no sensitive data).
+    // Any signed-in user may bump versions for entities they are allowed to edit
+    // (e.g. suppliers/material_items are writable by all signed-in users).
+    match /app_meta/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
   }
 }
