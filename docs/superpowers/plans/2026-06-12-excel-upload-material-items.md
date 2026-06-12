@@ -360,6 +360,7 @@ git commit -m "feat(materials): add Firestore import handler and preview summary
 
 At the end of the template (before the closing `</div>` of the root element, after the existing edit/create modal around line 440), add:
 
+{% raw %}
 ```html
 <!-- Excel Upload Modal -->
 <div v-if="isUploadModalOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -518,6 +519,7 @@ At the end of the template (before the closing `</div>` of the root element, aft
   </div>
 </div>
 ```
+{% endraw %}
 
 - [ ] **Step 2: Verify the app compiles and modal works**
 
